@@ -1,3 +1,5 @@
+<img src="src/SideBySide.App/Assets/app-256.png" width="72" align="left" alt="" />
+
 # SideBySide
 
 Windows 탐색기 기능에 **좌우 두 창 비교**(Beyond Compare 방식의 폴더/파일 비교)를 더한 가벼운 파일 관리자입니다.

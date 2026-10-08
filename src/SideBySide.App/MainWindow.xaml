@@ -10,6 +10,7 @@
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance vm:MainViewModel}"
         Title="{Binding WindowTitle}"
+        Icon="Assets/app.ico"
         Width="1280" Height="800" MinWidth="720" MinHeight="420"
         Background="{DynamicResource Brush.WindowBg}"
         Foreground="{DynamicResource Brush.Text}"
@@ -44,10 +45,13 @@
         </Grid.ColumnDefinitions>
 
         <StackPanel Orientation="Horizontal" Margin="14,0,16,0" VerticalAlignment="Center">
-          <Grid Width="14" Height="12" Margin="0,0,10,0" VerticalAlignment="Center">
-            <Rectangle Width="6" HorizontalAlignment="Left" Fill="{DynamicResource Brush.Accent}" RadiusX="1" RadiusY="1" />
-            <Rectangle Width="6" HorizontalAlignment="Right" Fill="{DynamicResource Brush.TextSecondary}" RadiusX="1" RadiusY="1" />
-          </Grid>
+          <!-- 앱 아이콘(Assets/app.ico)과 같은 모양의 벡터 로고: 작은 크기에서도 선명 -->
+          <Border Width="16" Height="16" CornerRadius="4" Background="#2F6DB5" Margin="0,0,10,0" VerticalAlignment="Center">
+            <Grid Margin="3,3.5">
+              <Rectangle Width="4.5" HorizontalAlignment="Left" Fill="White" RadiusX="1" RadiusY="1" />
+              <Rectangle Width="4.5" HorizontalAlignment="Right" Fill="White" RadiusX="1" RadiusY="1" />
+            </Grid>
+          </Border>
           <TextBlock Text="SideBySide" FontSize="{StaticResource FontSize.Small}" Foreground="{DynamicResource Brush.TextSecondary}" />
         </StackPanel>
 
