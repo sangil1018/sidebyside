@@ -15,6 +15,13 @@ Windows 탐색기 기능에 **좌우 두 창 비교**(Beyond Compare 방식의 �
 - 실행: [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) (런타임 포함 빌드는 불필요)
 - 빌드: .NET 8 SDK
 
+## 다운로드
+
+[Releases](https://github.com/sangil1018/sidebyside/releases)에서 받으세요. `selfcontained` 파일은 설치 없이 바로 실행됩니다.
+
+새 버전 배포: `git tag v1.2.3 && git push origin v1.2.3` (또는 Actions → release → Run workflow).
+GitHub Actions가 Windows에서 테스트·빌드한 뒤 릴리스를 만들고 exe를 올립니다.
+
 ## 빌드 / 실행
 
 ```powershell
