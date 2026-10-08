@@ -1,0 +1,144 @@
+# SideBySide
+
+Windows 탐색기 기능에 **좌우 두 창 비교**(Beyond Compare 방식의 폴더/파일 비교)를 더한 가벼운 파일 관리자입니다.
+평소에는 일반 탐색기로 쓰고, `Ctrl+M` 한 번으로 비교 모드로 전환합니다.
+
+- **탐색기 모드**: 탭, 두 창, 주소 표시줄, 검색, 미리보기, Windows 원본 우클릭 메뉴, 복사/잘라내기/붙여넣기(탐색기와 호환), 휴지통 삭제, 드래그 앤 드롭, 다중 이름 바꾸기, 터미널 열기
+- **비교 모드**: 같은 이름끼리 같은 행에 정렬, 다름/한쪽에만 있음 색 표시, 하위 폴더까지 병렬 비교, 차이만 보기, 양쪽 동시 폴더 이동, 한쪽으로 복사
+- **파일 비교**: 줄 단위 + 글자 단위 강조, 차이 블록을 반대편에 적용(병합), 직접 편집, 실행 취소, 원본 인코딩·줄끝 유지 저장
+- **필터**: `*.tmp; bin\; .git\` 같은 패턴으로 보기 싫은 항목 숨김 (두 모드 공통, 프리셋 저장)
+- **비교 세션**: 자주 비교하는 폴더 쌍 + 필터 + 옵션 저장/불러오기
+
+## 요구 사항
+
+- Windows 10 1809 이상 / Windows 11 (x64)
+- 실행: [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) (런타임 포함 빌드는 불필요)
+- 빌드: .NET 8 SDK
+
+## 빌드 / 실행
+
+```powershell
+# 개발 실행
+dotnet run --project src/SideBySide.App
+
+# 테스트
+dotnet test
+
+# 배포용 단일 exe 만들기 (artifacts\ 폴더)
+./build.ps1                 # .NET 런타임 필요, 작은 exe
+./build.ps1 -SelfContained  # 런타임 포함, 설치 없이 실행
+```
+
+## 명령줄
+
+```text
+SideBySide.exe                      마지막 탭 복원
+SideBySide.exe <경로>               해당 폴더 열기 (파일이면 폴더 열고 선택)
+SideBySide.exe <왼쪽> <오른쪽>       폴더면 폴더 비교, 파일이면 파일 비교로 바로 시작
+```
+
+Git difftool로 쓰기:
+
+```powershell
+git config --global difftool.sidebyside.cmd '"C:/Tools/SideBySide/SideBySide.exe" "$LOCAL" "$REMOTE"'
+git difftool --tool=sidebyside
+```
+
+## 단축키
+
+모든 단축키는 `src/SideBySide.App/Commands/CommandRegistry.cs` 한 곳에 정의되어 있고, 버튼 툴팁에도 같은 값이 표시됩니다.
+
+| 단축키 | 동작 | 범위 |
+|---|---|---|
+| Ctrl+M | 탐색기 / 비교 모드 전환 | 전체 |
+| Ctrl+D | 두 창 보기 | 전체 |
+| Tab | 왼쪽 / 오른쪽 창 전환 | 파일 목록 |
+| Alt+P | 미리보기 창 | 전체 |
+| Ctrl+Shift+B | 탐색 창 | 전체 |
+| Ctrl+H | 숨김 항목 표시 | 전체 |
+| Ctrl+Shift+T | 라이트 / 다크 테마 | 전체 |
+| Ctrl+T / Ctrl+W | 새 탭 / 탭 닫기 | 전체 |
+| Ctrl+Tab / Ctrl+Shift+Tab | 다음 / 이전 탭 | 전체 |
+| Alt+← / Alt+→ | 뒤로 / 앞으로 | 전체 |
+| Alt+↑, Backspace | 상위 폴더 | 전체 / 파일 목록 |
+| F5 | 새로 고침 (비교 모드: 다시 비교) | 전체 |
+| Ctrl+L, F4, Alt+D | 주소 표시줄 편집 | 전체 |
+| Ctrl+F | 현재 폴더에서 검색 | 전체 |
+| Esc | 비교 취소 / 검색 지우기 | 전체 |
+| Enter | 열기 (비교 모드: 폴더는 양쪽 진입, 파일은 파일 비교) | 파일 목록 |
+| F2 | 이름 바꾸기 (여러 개 선택 시 다중 이름 바꾸기) | 파일 목록 |
+| Del / Shift+Del | 휴지통으로 삭제 / 영구 삭제 | 파일 목록 |
+| Ctrl+C / Ctrl+X / Ctrl+V | 복사 / 잘라내기 / 붙여넣기 | 파일 목록 |
+| Ctrl+Shift+N | 새 폴더 | 전체 |
+| Alt+Enter | 속성 | 파일 목록 |
+| Ctrl+Shift+C | 경로 복사 | 파일 목록 |
+| Shift+F10, 메뉴 키 | Windows 우클릭 메뉴 | 파일 목록 |
+| Ctrl+Shift+\` | 여기서 터미널 열기 | 전체 |
+| Ctrl+→ / Ctrl+← | 선택 항목을 오른쪽 / 왼쪽 창으로 복사 | 파일 목록 (두 창) |
+| Ctrl+Shift+F | 필터 | 전체 |
+| F7 / Shift+F7 | 다음 / 이전 차이 | 비교 모드 |
+| Ctrl+I | 차이만 보기 | 비교 모드 |
+| Ctrl+Shift+D | 선택한 두 파일 비교 | 전체 |
+| Ctrl+Shift+S / Ctrl+O | 비교 세션 저장 / 열기 | 전체 |
+| Alt+→ / Alt+← | 현재 차이를 오른쪽 / 왼쪽에 적용 | 파일 비교 |
+| Ctrl+E | 편집 모드 (양쪽 직접 편집) | 파일 비교 |
+| Ctrl+S / Ctrl+Z | 저장 / 실행 취소 | 파일 비교 |
+| Esc | 파일 비교 닫기 | 파일 비교 |
+
+마우스: 가운데 클릭(폴더) = 새 탭에서 열기, 가운데 클릭(탭) = 탭 닫기, 드래그 = 같은 드라이브 이동 / 다른 드라이브 복사 (Ctrl 복사, Shift 이동).
+
+## 필터 문법
+
+- `;` 또는 줄바꿈으로 구분, `*` `?` 와일드카드, 대소문자 무시
+- 끝에 `\`를 붙이면 폴더에만 적용: `bin\; obj\; node_modules\`
+- **제외**: 일치하는 파일·폴더 숨김 / **포함**: 일치하는 파일만 표시 (폴더는 탐색을 위해 항상 표시)
+- 상단의 필터 칩에서 현재 필터 확인, `×`로 해제
+
+## 비교 기준
+
+| 옵션 | 설명 |
+|---|---|
+| 크기·날짜 (기본) | 크기와 수정 시각이 같으면 같음. 빠름 |
+| 내용 (바이트) | 크기가 같으면 내용을 끝까지 비교. 정확 |
+| 시각 허용 오차 | 기본 2초 (FAT/exFAT/네트워크 드라이브 대응) |
+| 1시간 차이 무시 | 서머타임·시간대 차이로 인한 정확히 1시간 차이 |
+| 하위 폴더까지 비교 | 폴더 행의 색이 안쪽 내용 기준으로 결정됨 (백그라운드 병렬) |
+
+## 성능
+
+- 디렉터리 열거: `FileSystemEnumerable`(Win32 `FindFirstFileEx`)로 FileInfo 할당 없이 백그라운드에서 수행
+- 목록: 가상화 + 컨테이너 재활용 — 화면에 보이는 행만 생성 (수만 개 파일도 즉시 표시)
+- 아이콘: 확장자 단위 캐시, 전용 스레드에서 지연 로드
+- 비교: 파일 내용 비교와 하위 폴더 비교를 `Parallel.ForEachAsync`로 CPU 코어 수만큼 병렬 처리, 폴더 결과 캐시
+- 렌더링: WPF(DirectX) 하드웨어 가속
+- 파일 작업은 Windows 셸 엔진(진행률/충돌 대화상자, 실행 취소 지원)을 별도 스레드에서 실행
+
+## 설정 / 로그
+
+- 설정: `%AppData%\SideBySide\settings.json` (창 위치, 탭, 필터 프리셋, 세션, 테마)
+- 오류 로그: `%LocalAppData%\SideBySide\error.log`
+
+## 수동 점검 목록 (Windows)
+
+자동 테스트는 Core 로직(비교·디프·필터·이름 바꾸기·설정)을 다룹니다. 셸 연동은 Windows에서 직접 확인하세요.
+
+- [ ] Ctrl+M 모드 전환, 비교 색상/정렬, F7 이동, Ctrl+I 차이만 보기
+- [ ] 비교 모드에서 폴더 더블클릭 시 양쪽 동시 진입, Backspace 양쪽 상위 이동
+- [ ] 파일 더블클릭 → 파일 비교, Alt+→ 적용, Ctrl+S 저장 후 인코딩/줄끝 유지
+- [ ] 탐색기에서 복사한 파일을 SideBySide에 붙여넣기 (반대 방향도)
+- [ ] 우클릭 메뉴(보내기/연결 프로그램 하위 메뉴 포함), Shift+우클릭 확장 메뉴
+- [ ] 드래그 앤 드롭 (창 간, 탐색기 ↔ SideBySide)
+- [ ] Del 휴지통, Shift+Del 영구 삭제 확인 대화상자
+- [ ] 미리보기: 이미지, 텍스트, PDF/Office(미리보기 처리기)
+- [ ] 다크 테마 / 시스템 테마 변경 추종, 고DPI 모니터
+
+## 구조
+
+`docs/ARCHITECTURE.md` 참고.
+
+```
+src/SideBySide.Core    순수 로직 (UI·Win32 없음) — 비교, 디프, 필터, 이름 바꾸기, 설정
+src/SideBySide.Shell   Windows 셸 연동 (아이콘, 파일 작업, 우클릭 메뉴, 클립보드, 미리보기)
+src/SideBySide.App     WPF 앱 (MVVM)
+tests/                 Core 단위 테스트
+```

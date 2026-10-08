@@ -10,13 +10,13 @@ public sealed class DialogService(ThemeManager theme) : IDialogService
     private static Window? Owner => Application.Current?.MainWindow;
 
     public void ShowError(string message)
-        => MessageBox.Show(Owner!, message, "SideBySide", MessageBoxButton.OK, MessageBoxImage.Warning);
+        => Show(message, "SideBySide", MessageBoxButton.OK, MessageBoxImage.Warning);
 
     public bool Confirm(string message, string title)
-        => MessageBox.Show(Owner!, message, title, MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK;
+        => Show(message, title, MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK;
 
     public bool? AskYesNoCancel(string message, string title)
-        => MessageBox.Show(Owner!, message, title, MessageBoxButton.YesNoCancel, MessageBoxImage.Question) switch
+        => Show(message, title, MessageBoxButton.YesNoCancel, MessageBoxImage.Question) switch
         {
             MessageBoxResult.Yes => true,
             MessageBoxResult.No => false,
@@ -43,6 +43,11 @@ public sealed class DialogService(ThemeManager theme) : IDialogService
         var dialog = Prepare(new SessionDialog(sessions));
         return dialog.ShowDialog() == true ? dialog.Selected : null;
     }
+
+    private static MessageBoxResult Show(string message, string title, MessageBoxButton buttons, MessageBoxImage image)
+        => Owner is { IsLoaded: true } owner
+            ? MessageBox.Show(owner, message, title, buttons, image)
+            : MessageBox.Show(message, title, buttons, image);
 
     private T Prepare<T>(T window)
         where T : Window

@@ -80,6 +80,4 @@ public sealed class AppSettings
     public bool ShowDifferencesOnly { get; set; }
 
     public List<string> Favorites { get; set; } = [];
-
-    public Dictionary<string, double> ColumnWidths { get; set; } = [];
 }
