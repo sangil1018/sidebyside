@@ -66,8 +66,8 @@ public static class CommandRegistry
     public static IReadOnlyList<CommandDefinition> All { get; } =
     [
         // 모드·레이아웃
-        new(CommandIds.ToggleMode, "탐색기 / 비교 모드 전환", Key.M, Ctrl, CommandScope.Global),
-        new(CommandIds.ToggleDualPane, "두 창 보기", Key.D, Ctrl, CommandScope.Global),
+        new(CommandIds.ToggleDualPane, "한 창(탐색기) / 두 창(비교) 전환", Key.D, Ctrl, CommandScope.Global),
+        new(CommandIds.ToggleDualPane, "한 창(탐색기) / 두 창(비교) 전환", Key.M, Ctrl, CommandScope.Global, IsAlternate: true),
         new(CommandIds.TogglePreview, "미리보기 창", Key.P, Alt, CommandScope.Global),
         new(CommandIds.ToggleSidebar, "탐색 창", Key.B, CtrlShift, CommandScope.Global),
         new(CommandIds.ToggleHidden, "숨김 항목 표시", Key.H, Ctrl, CommandScope.Global),
@@ -113,8 +113,10 @@ public static class CommandRegistry
         new(CommandIds.ShowContextMenu, "메뉴 열기", Key.Apps, None, CommandScope.FileList, IsAlternate: true),
         new(CommandIds.OpenTerminal, "여기서 터미널 열기", Key.Oem3, CtrlShift, CommandScope.Global, "Ctrl+Shift+`"),
         new(CommandIds.PinFavorite, "즐겨찾기에 고정", Key.None, None, CommandScope.Global),
-        new(CommandIds.CopyToRight, "오른쪽 창으로 복사", Key.Right, Ctrl, CommandScope.FileList),
-        new(CommandIds.CopyToLeft, "왼쪽 창으로 복사", Key.Left, Ctrl, CommandScope.FileList),
+        // Global: 목록 밖(도구 모음 클릭 후 등)에서도 동작. 입력란 안에서는 TextBox가 먼저 처리해 단어 이동 유지
+        new(CommandIds.CopyToRight, "오른쪽 창으로 복사", Key.Right, Ctrl, CommandScope.Global),
+        new(CommandIds.CopyToLeft, "왼쪽 창으로 복사", Key.Left, Ctrl, CommandScope.Global),
+        new(CommandIds.EjectDrive, "USB 장치 안전하게 제거", Key.E, CtrlShift, CommandScope.Global),
 
         // 필터
         new(CommandIds.EditFilter, "필터", Key.F, CtrlShift, CommandScope.Global),

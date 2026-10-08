@@ -1,15 +1,13 @@
 namespace SideBySide.Shell.Abstractions;
 
 /// <summary>
-/// 파일 작업. Windows 셸 엔진을 사용하므로 진행률 창, 덮어쓰기 확인, 실행 취소(Ctrl+Z in 탐색기),
-/// 휴지통이 탐색기와 동일하게 동작한다. 반환값: 사용자가 취소하지 않고 완료했으면 true.
+/// 셸 엔진이 필요한 파일 작업 (휴지통, 이름 바꾸기). 셸 진행 창은 띄우지 않는다 — 진행률은 앱이 표시.
+/// 복사/이동은 진행률 보고를 위해 Core의 <c>FileTransfer</c> 엔진을 쓴다.
+/// 반환값: 실패·취소 없이 완료했으면 true.
 /// </summary>
 public interface IFileOperations
 {
-    Task<bool> CopyAsync(IReadOnlyList<string> sources, string destinationDirectory, bool renameOnCollision = false);
-
-    Task<bool> MoveAsync(IReadOnlyList<string> sources, string destinationDirectory);
-
+    /// <summary>삭제. <paramref name="permanent"/>가 false면 휴지통으로. 확인은 호출 측(앱)이 한다.</summary>
     Task<bool> DeleteAsync(IReadOnlyList<string> paths, bool permanent);
 
     Task<bool> RenameAsync(string path, string newName);

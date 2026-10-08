@@ -4,7 +4,6 @@ namespace SideBySide.App.Commands;
 public static class CommandIds
 {
     // 모드·레이아웃
-    public const string ToggleMode = nameof(ToggleMode);
     public const string ToggleDualPane = nameof(ToggleDualPane);
     public const string TogglePreview = nameof(TogglePreview);
     public const string ToggleSidebar = nameof(ToggleSidebar);
@@ -49,6 +48,7 @@ public static class CommandIds
     public const string PinFavorite = nameof(PinFavorite);
     public const string CopyToRight = nameof(CopyToRight);
     public const string CopyToLeft = nameof(CopyToLeft);
+    public const string EjectDrive = nameof(EjectDrive);
 
     // 필터
     public const string EditFilter = nameof(EditFilter);

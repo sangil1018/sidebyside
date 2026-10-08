@@ -20,6 +20,10 @@
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
 
+  <Window.TaskbarItemInfo>
+    <TaskbarItemInfo ProgressState="{Binding TaskbarState}" ProgressValue="{Binding TaskbarProgress}" />
+  </Window.TaskbarItemInfo>
+
   <WindowChrome.WindowChrome>
     <WindowChrome CaptionHeight="38" ResizeBorderThickness="6" GlassFrameThickness="0,0,0,1"
                   CornerRadius="0" UseAeroCaptionButtons="False" />
@@ -31,6 +35,7 @@
         <RowDefinition Height="38" />
         <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
         <RowDefinition Height="26" />
       </Grid.RowDefinitions>
 
@@ -55,15 +60,15 @@
           <TextBlock Text="SideBySide" FontSize="{StaticResource FontSize.Small}" Foreground="{DynamicResource Brush.TextSecondary}" />
         </StackPanel>
 
-        <!-- 모드 전환 -->
+        <!-- 한 창 = 탐색기, 두 창 = 폴더 비교 -->
         <Border Grid.Column="1" Background="{DynamicResource Brush.Hover}" CornerRadius="5" Padding="2"
                 VerticalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True"
-                ToolTip="{cmd:Tip ToggleMode}">
+                ToolTip="{cmd:Tip ToggleDualPane}">
           <StackPanel Orientation="Horizontal">
-            <RadioButton Style="{StaticResource Radio.Segment}" Content="탐색기" GroupName="Mode"
-                         IsChecked="{Binding Mode, Converter={StaticResource EnumEquals}, ConverterParameter=Explorer}" />
-            <RadioButton Style="{StaticResource Radio.Segment}" Content="비교" GroupName="Mode"
-                         IsChecked="{Binding Mode, Converter={StaticResource EnumEquals}, ConverterParameter=Compare}" />
+            <RadioButton Style="{StaticResource Radio.Segment}" Content="한 창" GroupName="Panes"
+                         IsChecked="{Binding IsDualPane, Converter={StaticResource InverseBool}}" />
+            <RadioButton Style="{StaticResource Radio.Segment}" Content="두 창 비교" GroupName="Panes"
+                         IsChecked="{Binding IsDualPane}" />
           </StackPanel>
         </Border>
 
@@ -192,10 +197,7 @@
                 <TextBlock Style="{StaticResource Glyph}" Text="&#xE70D;" FontSize="9" Margin="6,0,0,0" />
               </StackPanel>
             </Button>
-            <ToggleButton Style="{StaticResource Button.Ghost}" Content="탐색 창" IsChecked="{Binding ShowSidebar}" ToolTip="{cmd:Tip ToggleSidebar}"
-                          IsEnabled="{Binding IsCompareMode, Converter={StaticResource InverseBool}}" />
-            <ToggleButton Style="{StaticResource Button.Ghost}" Content="두 창" IsChecked="{Binding IsDualPane}" ToolTip="{cmd:Tip ToggleDualPane}"
-                          IsEnabled="{Binding IsCompareMode, Converter={StaticResource InverseBool}}" />
+            <ToggleButton Style="{StaticResource Button.Ghost}" Content="탐색 창" IsChecked="{Binding ShowSidebar}" ToolTip="{cmd:Tip ToggleSidebar}" />
             <ToggleButton Style="{StaticResource Button.Ghost}" Content="미리보기" IsChecked="{Binding ShowPreview}" ToolTip="{cmd:Tip TogglePreview}" />
             <ToggleButton Style="{StaticResource Button.Ghost}" Content="숨김 항목" IsChecked="{Binding ShowHidden}" ToolTip="{cmd:Tip ToggleHidden}" />
           </StackPanel>
@@ -230,8 +232,42 @@
                             Visibility="{Binding DataContext.IsDiffOpen, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}" />
       </Grid>
 
+      <!-- ── 진행 중인 파일 작업 (별도 창 없이 하단에 표시) ─────────── -->
+      <ItemsControl Grid.Row="3" ItemsSource="{Binding Operations}" Focusable="False">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="{x:Type vm:OperationViewModel}">
+            <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0" Padding="12,6,6,6"
+                    Background="{DynamicResource Brush.SurfaceBg}">
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="220" />
+                  <ColumnDefinition Width="44" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                  <TextBlock TextTrimming="CharacterEllipsis">
+                    <Run Text="{Binding Title, Mode=OneWay}" FontWeight="SemiBold" />
+                    <Run Text="  " />
+                    <Run Text="{Binding CurrentItem, Mode=OneWay}" Foreground="{DynamicResource Brush.TextSecondary}" />
+                  </TextBlock>
+                  <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding Details}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <ProgressBar Grid.Column="1" Style="{StaticResource ProgressBar.Thin}" VerticalAlignment="Center"
+                             Value="{Binding Fraction, Mode=OneWay}" IsIndeterminate="{Binding IsIndeterminate}" />
+                <TextBlock Grid.Column="2" Style="{StaticResource Text.Secondary}" Text="{Binding PercentText}"
+                           HorizontalAlignment="Right" />
+                <Button Grid.Column="3" Style="{StaticResource Button.SmallIcon}" Content="&#xE711;" Margin="8,0,0,0"
+                        Command="{Binding CancelCommand}" ToolTip="작업 취소"
+                        Visibility="{Binding CanCancel, Converter={StaticResource BoolToVis}}" />
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
       <!-- ── 상태 표시줄 ─────────────────────────────────────────── -->
-      <Border Grid.Row="3" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0" Padding="12,0">
+      <Border Grid.Row="4" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0" Padding="12,0">
         <DockPanel>
           <TextBlock DockPanel.Dock="Right" Style="{StaticResource Text.Secondary}" Text="{Binding FreeSpaceText}" />
           <StackPanel Orientation="Horizontal">

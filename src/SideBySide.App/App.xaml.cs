@@ -80,11 +80,13 @@ public partial class App : Application
         services.AddSingleton<IFileClipboard, ShellClipboard>();
         services.AddSingleton<IContextMenuService, ShellContextMenu>();
         services.AddSingleton<ILauncher, ShellLauncher>();
+        services.AddSingleton<IDriveService, DriveService>();
 
         // App
         services.AddSingleton<ThemeManager>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<UndoService>();
+        services.AddSingleton<FileTransferService>();
         services.AddSingleton<CommandHost>();
         services.AddSingleton<ExplorerContext>();
         services.AddSingleton<MainViewModel>();

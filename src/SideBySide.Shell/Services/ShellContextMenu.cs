@@ -19,6 +19,63 @@ public sealed class ShellContextMenu(IOwnerWindow owner) : IContextMenuService
     private IContextMenu3? _menu3;
 
     public void ShowForItems(IReadOnlyList<string> paths, int screenX, int screenY, bool extended, Func<string, bool>? interceptVerb = null)
+        => WithItemMenu(owner.Handle, paths, menuPtr => Show(menuPtr, screenX, screenY, extended, interceptVerb));
+
+    /// <summary>
+    /// 메뉴를 띄우지 않고 셸 동사(예: "eject")를 실행. 셸 확장이 오래 걸릴 수 있어 별도 STA 스레드에서 실행.
+    /// 반환: 동사를 찾아 실행했으면 true.
+    /// </summary>
+    public static Task<bool> InvokeVerbAsync(string path, string verb)
+    {
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var thread = new Thread(() =>
+        {
+            var ok = false;
+            try
+            {
+                WithItemMenu(IntPtr.Zero, [path], menuPtr =>
+                {
+                    var menu = (IContextMenu)Marshal.GetObjectForIUnknown(menuPtr);
+                    var hMenu = CreatePopupMenu();
+                    var verbA = Marshal.StringToHGlobalAnsi(verb);
+                    var verbW = Marshal.StringToHGlobalUni(verb);
+                    try
+                    {
+                        // 일부 셸 확장은 메뉴를 먼저 구성해야 동사를 인식한다
+                        menu.QueryContextMenu(hMenu, 0, FirstCommand, LastCommand, CMF_NORMAL);
+                        var invoke = new CMINVOKECOMMANDINFOEX
+                        {
+                            cbSize = Marshal.SizeOf<CMINVOKECOMMANDINFOEX>(),
+                            fMask = CMIC_MASK_UNICODE,
+                            lpVerb = verbA,
+                            lpVerbW = verbW,
+                            nShow = SW_SHOW,
+                        };
+                        ok = menu.InvokeCommand(ref invoke) == 0;
+                    }
+                    finally
+                    {
+                        Marshal.FreeHGlobal(verbA);
+                        Marshal.FreeHGlobal(verbW);
+                        DestroyMenu(hMenu);
+                        Marshal.ReleaseComObject(menu);
+                    }
+                });
+            }
+            catch (COMException)
+            {
+            }
+
+            tcs.SetResult(ok);
+        })
+        { IsBackground = true, Name = "ShellVerb" };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        return tcs.Task;
+    }
+
+    /// <summary>같은 폴더 안 항목들의 IContextMenu를 만들어 <paramref name="use"/>에 넘기고 정리한다.</summary>
+    private static void WithItemMenu(IntPtr ownerHandle, IReadOnlyList<string> paths, Action<IntPtr> use)
     {
         if (paths.Count == 0) return;
 
@@ -45,9 +102,9 @@ public sealed class ShellContextMenu(IOwnerWindow owner) : IContextMenuService
 
             var folder = (IShellFolder)Marshal.GetObjectForIUnknown(parentPtr);
             var iidMenu = typeof(IContextMenu).GUID;
-            if (folder.GetUIObjectOf(owner.Handle, (uint)children.Length, children, ref iidMenu, IntPtr.Zero, out menuPtr) != 0) return;
+            if (folder.GetUIObjectOf(ownerHandle, (uint)children.Length, children, ref iidMenu, IntPtr.Zero, out menuPtr) != 0) return;
 
-            Show(menuPtr, screenX, screenY, extended, interceptVerb);
+            use(menuPtr);
         }
         finally
         {

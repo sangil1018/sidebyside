@@ -16,7 +16,12 @@ namespace SideBySide.App;
 /// </summary>
 public partial class MainWindow : Window
 {
+    private const int WM_DEVICECHANGE = 0x0219;
+    private const int DBT_DEVICEARRIVAL = 0x8000;
+    private const int DBT_DEVICEREMOVECOMPLETE = 0x8004;
+
     private readonly AppSettings _settings;
+    private readonly System.Windows.Threading.DispatcherTimer _deviceTimer;
     private bool _syncingScroll;
 
     public MainWindow(MainViewModel viewModel, AppSettings settings, CommandHost commands)
@@ -43,7 +48,18 @@ public partial class MainWindow : Window
         LeftPane.VerticalScrolled += (_, offset) => SyncScroll(RightPane, offset);
         RightPane.VerticalScrolled += (_, offset) => SyncScroll(LeftPane, offset);
 
-        SourceInitialized += (_, _) => WindowTheming.SetRoundCorners(new WindowInteropHelper(this).Handle);
+        SourceInitialized += (_, _) =>
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            WindowTheming.SetRoundCorners(hwnd);
+            HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+        };
+        _deviceTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
+        _deviceTimer.Tick += (_, _) =>
+        {
+            _deviceTimer.Stop();
+            _ = ViewModel.OnDevicesChangedAsync();
+        };
         StateChanged += (_, _) => UpdateMaximizedState();
         Closing += OnClosing;
         Loaded += (_, _) => LeftPane.FocusList();
@@ -62,7 +78,7 @@ public partial class MainWindow : Window
             case nameof(MainViewModel.ShowPreview):
                 UpdateColumns();
                 break;
-            case nameof(MainViewModel.Mode):
+            case nameof(MainViewModel.IsDualPane):
                 if (ViewModel.IsCompareMode)
                 {
                     // 비교 모드에서는 좌우 같은 너비로 시작
@@ -116,6 +132,18 @@ public partial class MainWindow : Window
         _syncingScroll = true;
         try { target.ScrollToVerticalOffset(offset); }
         finally { _syncingScroll = false; }
+    }
+
+    /// <summary>USB 장치 연결/분리 감지 → 드라이브 목록 갱신 (연속 알림은 묶어서 한 번만).</summary>
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WM_DEVICECHANGE && (wParam.ToInt32() == DBT_DEVICEARRIVAL || wParam.ToInt32() == DBT_DEVICEREMOVECOMPLETE))
+        {
+            _deviceTimer.Stop();
+            _deviceTimer.Start();
+        }
+
+        return IntPtr.Zero;
     }
 
     // ── 창 위치 ─────────────────────────────────────────────────────

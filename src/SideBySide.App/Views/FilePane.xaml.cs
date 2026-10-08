@@ -31,6 +31,14 @@ public partial class FilePane : UserControl
     private readonly GridViewColumn _locationColumn;
     private ViewMode _appliedView = ViewMode.Details;
 
+    // 마우스 끌기 영역 선택 상태
+    private bool _marqueePending;
+    private bool _marqueeActive;
+    private Point _marqueeStart;            // 패널 내용 좌표 (스크롤해도 시작점이 고정되도록)
+    private HashSet<FileItemViewModel> _marqueeBase = [];
+    private HashSet<FileItemViewModel> _marqueeLast = [];
+    private readonly System.Windows.Threading.DispatcherTimer _autoScroll;
+
     public FilePane()
     {
         InitializeComponent();
@@ -42,6 +50,8 @@ public partial class FilePane : UserControl
             CellTemplate = (DataTemplate)FindResource("Cell.Location"),
         };
         DataContextChanged += (_, _) => AttachPane(DataContext as PaneViewModel);
+        _autoScroll = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+        _autoScroll.Tick += (_, _) => AutoScrollMarquee();
         Loaded += (_, _) => EnsureHooks();
         IsVisibleChanged += (_, _) => EnsureHooks();
     }
@@ -161,7 +171,7 @@ public partial class FilePane : UserControl
 
     private void OnMainPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MainViewModel.ViewMode) or nameof(MainViewModel.Mode)) ApplyView();
+        if (e.PropertyName is nameof(MainViewModel.ViewMode) or nameof(MainViewModel.IsDualPane)) ApplyView();
     }
 
     /// <summary>자세히 / 아이콘 보기 전환. 비교 모드는 행 정렬이 필요하므로 항상 자세히 보기.</summary>
@@ -189,6 +199,7 @@ public partial class FilePane : UserControl
 
         // 템플릿이 바뀌면 내부 ScrollViewer도 새로 만들어지므로 다시 연결
         _scroll = null;
+        _itemsHost = null;
         Dispatcher.BeginInvoke(EnsureHooks, DispatcherPriority.Loaded);
         if (List.SelectedItem is { } selected) Dispatcher.BeginInvoke(() => List.ScrollIntoView(selected), DispatcherPriority.Loaded);
     }
@@ -324,15 +335,19 @@ public partial class FilePane : UserControl
     {
         if (IsOnChrome(e.OriginalSource)) return;
         var item = ItemAt(e.OriginalSource);
-        _pressedItem = item;
+        var onHandle = IsDragHandle(e.OriginalSource, item);
+        _pressedItem = onHandle ? item : null;
         _dragStart = e.GetPosition(List);
         _deferSelect = false;
+        _marqueePending = false;
 
         if (item is null)
         {
-            // 빈 곳 클릭: 선택 해제
-            List.SelectedItems.Clear();
+            // 빈 곳: 수정 키 없으면 선택 해제, 끌면 영역 선택
+            if (Keyboard.Modifiers == ModifierKeys.None) List.SelectedItems.Clear();
             List.Focus();
+            BeginMarqueePending(e);
+            e.Handled = true;
             return;
         }
 
@@ -342,6 +357,13 @@ public partial class FilePane : UserControl
         {
             e.Handled = true;
             Main?.OpenItem(_pane!, item);
+            return;
+        }
+
+        if (!onHandle)
+        {
+            // 자세히 보기에서 이름 밖(날짜·크기 열 등): 클릭은 행 선택, 끌면 영역 선택
+            BeginMarqueePending(e);
             return;
         }
 
@@ -356,6 +378,13 @@ public partial class FilePane : UserControl
 
     private void OnListMouseUp(object sender, MouseButtonEventArgs e)
     {
+        if (_marqueeActive)
+        {
+            EndMarquee();
+            e.Handled = true;
+        }
+
+        _marqueePending = false;
         if (_deferSelect && _pressedItem is not null)
         {
             List.SelectItems(new[] { _pressedItem });
@@ -367,6 +396,23 @@ public partial class FilePane : UserControl
 
     private void OnListMouseMove(object sender, MouseEventArgs e)
     {
+        if (_marqueeActive)
+        {
+            UpdateMarquee();
+            e.Handled = true; // ListView 자체의 끌기 선택(범위 선택)이 끼어들지 않도록
+            return;
+        }
+
+        if (_marqueePending && e.LeftButton == MouseButtonState.Pressed)
+        {
+            var p = e.GetPosition(List);
+            if (Math.Abs(p.X - _dragStart.X) >= SystemParameters.MinimumHorizontalDragDistance
+                || Math.Abs(p.Y - _dragStart.Y) >= SystemParameters.MinimumVerticalDragDistance)
+                StartMarquee();
+            e.Handled = true;
+            return;
+        }
+
         if (e.LeftButton != MouseButtonState.Pressed || _pressedItem is not { IsPlaceholder: false, IsDrive: false, IsEditing: false } item || _tab is null)
             return;
 
@@ -382,6 +428,142 @@ public partial class FilePane : UserControl
 
         var data = new DataObject(DataFormats.FileDrop, paths.ToArray());
         DragDrop.DoDragDrop(List, data, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
+    }
+
+    // ── 마우스 끌기 영역 선택 ───────────────────────────────────────
+
+    private Panel? _itemsHost;
+
+    private Panel? ItemsHost => _itemsHost ??= VisualTree.FindDescendant<VirtualizingPanel>(List);
+
+    private double ScrollY => _scroll?.VerticalOffset ?? 0;
+
+    /// <summary>이름(아이콘·글자) 위인지. 아이콘 보기는 타일 전체가 끌기 핸들.</summary>
+    private bool IsDragHandle(object source, FileItemViewModel? item)
+    {
+        if (item is null) return false;
+        if (_appliedView != ViewMode.Details) return true;
+        for (var d = source as DependencyObject; d is not null && d is not ListViewItem;
+             d = d is System.Windows.Media.Visual ? System.Windows.Media.VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d))
+        {
+            if (d is FrameworkElement { Tag: "DragHandle" }) return true;
+        }
+
+        return false;
+    }
+
+    private Point PanelOrigin => ItemsHost?.TranslatePoint(default, List) ?? default;
+
+    /// <summary>목록 좌표 → 패널 내용 좌표 (스크롤 오프셋 포함).</summary>
+    private Point ToContent(Point listPoint)
+    {
+        var origin = PanelOrigin;
+        return new Point(listPoint.X - origin.X, listPoint.Y - origin.Y + ScrollY);
+    }
+
+    private Point ToList(Point contentPoint)
+    {
+        var origin = PanelOrigin;
+        return new Point(contentPoint.X + origin.X, contentPoint.Y + origin.Y - ScrollY);
+    }
+
+    private void BeginMarqueePending(MouseButtonEventArgs e)
+    {
+        _marqueePending = true;
+        _marqueeStart = ToContent(e.GetPosition(List));
+    }
+
+    private void StartMarquee()
+    {
+        _marqueePending = false;
+        _marqueeActive = true;
+        _deferSelect = false;
+        _pressedItem = null;
+
+        // Ctrl/Shift를 누른 채 끌면 기존 선택에 추가, 아니면 새로 선택
+        _marqueeBase = Keyboard.Modifiers is ModifierKeys.Control or ModifierKeys.Shift
+            ? new HashSet<FileItemViewModel>(List.SelectedItems.Cast<FileItemViewModel>())
+            : [];
+        _marqueeLast = [];
+        Marquee.Visibility = Visibility.Visible;
+        List.CaptureMouse();
+        _autoScroll.Start();
+        UpdateMarquee();
+    }
+
+    private void UpdateMarquee()
+    {
+        var current = Mouse.GetPosition(List);
+        var start = ToList(_marqueeStart);
+        var rect = new Rect(start, current);
+        rect.Intersect(new Rect(0, 0, List.ActualWidth, List.ActualHeight));
+        if (!rect.IsEmpty)
+        {
+            Canvas.SetLeft(Marquee, rect.X);
+            Canvas.SetTop(Marquee, rect.Y);
+            Marquee.Width = rect.Width;
+            Marquee.Height = rect.Height;
+        }
+
+        var hits = IndicesIn(new Rect(_marqueeStart, ToContent(current)));
+        if (hits.SetEquals(_marqueeLast)) return;
+        _marqueeLast = hits;
+        List.SelectItems(_marqueeBase.Concat(hits).Distinct().ToList());
+    }
+
+    /// <summary>패널 내용 좌표 사각형과 겹치는 항목. 가상화로 화면 밖 행은 컨테이너가 없으므로 기하 계산으로 구한다.</summary>
+    private HashSet<FileItemViewModel> IndicesIn(Rect rect)
+    {
+        var items = _tab?.Items;
+        var result = new HashSet<FileItemViewModel>();
+        if (items is null || items.Count == 0) return result;
+
+        if (ItemsHost is VirtualizingWrapPanel wrap)
+        {
+            foreach (var i in wrap.IndicesIntersecting(rect, items.Count)) result.Add(items[i]);
+            return result;
+        }
+
+        var rowHeight = (double)FindResource("RowHeight");
+        if (rect.Bottom < 0 || rect.Top >= items.Count * rowHeight) return result;
+        var first = Math.Max(0, (int)Math.Floor(rect.Top / rowHeight));
+        var last = Math.Min(items.Count - 1, (int)Math.Floor(Math.Max(0, rect.Bottom - 0.01) / rowHeight));
+        for (int i = first; i <= last; i++) result.Add(items[i]);
+        return result;
+    }
+
+    private void AutoScrollMarquee()
+    {
+        if (!_marqueeActive || _scroll is null) return;
+        var y = Mouse.GetPosition(List).Y;
+        var top = PanelOrigin.Y;
+        const double step = 24;
+        if (y < top) _scroll.ScrollToVerticalOffset(ScrollY - step);
+        else if (y > List.ActualHeight - 4) _scroll.ScrollToVerticalOffset(ScrollY + step);
+        else return;
+        Dispatcher.BeginInvoke(UpdateMarquee, System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    private void EndMarquee()
+    {
+        _marqueeActive = false;
+        _autoScroll.Stop();
+        Marquee.Visibility = Visibility.Collapsed;
+        if (List.IsMouseCaptured) List.ReleaseMouseCapture();
+
+        // 마지막 결과를 확정 (캡처 해제 과정에서 ListView가 선택을 바꿨을 수 있으므로 다시 적용)
+        var final = _marqueeBase.Concat(_marqueeLast).Distinct().ToList();
+        Dispatcher.BeginInvoke(() =>
+        {
+            List.SelectItems(final);
+            if (final.Count > 0 && List.ItemContainerGenerator.ContainerFromItem(final[^1]) is ListViewItem container) container.Focus();
+            else List.Focus();
+        }, System.Windows.Threading.DispatcherPriority.Input);
+    }
+
+    private void OnListLostMouseCapture(object sender, MouseEventArgs e)
+    {
+        if (_marqueeActive) EndMarquee();
     }
 
     private void OnListMiddleMouseDown(object sender, MouseButtonEventArgs e)

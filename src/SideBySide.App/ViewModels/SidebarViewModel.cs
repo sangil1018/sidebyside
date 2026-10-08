@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SideBySide.App.Infrastructure;
 using SideBySide.App.Services;
+using SideBySide.Shell.Abstractions;
 
 namespace SideBySide.App.ViewModels;
 
@@ -21,16 +22,21 @@ public sealed class SidebarItem
     public string Details { get; init; } = string.Empty;
 
     public bool HasUsage => Usage >= 0;
+
+    /// <summary>USB 장치·광학 드라이브처럼 안전하게 제거할 수 있는 드라이브.</summary>
+    public bool CanEject { get; init; }
 }
 
 /// <summary>왼쪽 탐색 창: 빠른 실행(알려진 폴더 + 고정 항목)과 드라이브 목록.</summary>
 public sealed partial class SidebarViewModel : ObservableObject
 {
     private readonly ExplorerContext _ctx;
+    private readonly IDriveService _drives;
 
-    public SidebarViewModel(ExplorerContext ctx)
+    public SidebarViewModel(ExplorerContext ctx, IDriveService drives)
     {
         _ctx = ctx;
+        _drives = drives;
         RebuildQuickAccess();
     }
 
@@ -85,6 +91,7 @@ public sealed partial class SidebarViewModel : ObservableObject
                 },
                 Usage = usage,
                 Details = details,
+                CanEject = _drives.IsEjectable(d.Name),
             };
         }).ToList());
 

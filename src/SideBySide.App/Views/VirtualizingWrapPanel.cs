@@ -39,6 +39,29 @@ public sealed class VirtualizingWrapPanel : VirtualizingPanel, IScrollInfo
 
     private int ItemsPerRow => Math.Max(1, (int)Math.Floor(_viewport.Width / ItemWidth));
 
+    /// <summary>
+    /// 패널 내용 좌표(스크롤 오프셋 포함) 사각형과 겹치는 항목 인덱스. 화면 밖(가상화로 컨테이너가 없는) 항목도 계산으로 포함한다.
+    /// 마우스 끌기 영역 선택에 쓰인다.
+    /// </summary>
+    public IEnumerable<int> IndicesIntersecting(Rect rect, int count)
+    {
+        var perRow = ItemsPerRow;
+        if (rect.Right < 0 || rect.Bottom < 0 || rect.Left >= perRow * ItemWidth) yield break;
+        var colFirst = Math.Max(0, (int)Math.Floor(rect.Left / ItemWidth));
+        var colLast = Math.Min(perRow - 1, (int)Math.Floor(Math.Max(0, rect.Right - 0.01) / ItemWidth));
+        var rowFirst = Math.Max(0, (int)Math.Floor(rect.Top / ItemHeight));
+        var rowLast = (int)Math.Floor(Math.Max(0, rect.Bottom - 0.01) / ItemHeight);
+        for (int row = rowFirst; row <= rowLast; row++)
+        {
+            for (int col = colFirst; col <= colLast; col++)
+            {
+                var index = (row * perRow) + col;
+                if (index >= count) yield break;
+                yield return index;
+            }
+        }
+    }
+
     // ── 배치 ────────────────────────────────────────────────────────
 
     protected override Size MeasureOverride(Size availableSize)

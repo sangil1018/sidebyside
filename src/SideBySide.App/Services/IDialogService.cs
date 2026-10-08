@@ -1,3 +1,4 @@
+using SideBySide.Core.FileSystem;
 using SideBySide.Core.Filtering;
 using SideBySide.Core.Rename;
 using SideBySide.Core.Sessions;
@@ -15,6 +16,9 @@ public interface IDialogService
     bool? AskYesNoCancel(string message, string title);
 
     string? Prompt(string title, string label, string initialValue);
+
+    /// <summary>복사/이동 중 같은 이름 충돌. (선택, 나머지 모두에 적용 여부)</summary>
+    (ConflictChoice Choice, bool ApplyToAll) ResolveConflict(TransferConflict conflict);
 
     /// <summary>필터 편집. 프리셋 목록은 대화상자 안에서 수정될 수 있다.</summary>
     FilterSettings? EditFilter(FilterSettings current, IList<FilterSettings> presets);
