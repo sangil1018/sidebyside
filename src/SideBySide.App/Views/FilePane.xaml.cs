@@ -8,6 +8,7 @@ using SideBySide.App.Commands;
 using SideBySide.App.Infrastructure;
 using SideBySide.App.ViewModels;
 using SideBySide.Core.FileSystem;
+using SideBySide.Core.Settings;
 
 namespace SideBySide.App.Views;
 
@@ -25,16 +26,37 @@ public partial class FilePane : UserControl
     private FileItemViewModel? _pressedItem;
     private bool _deferSelect;
     private bool _keysBound;
+    private MainViewModel? _main;
+    private readonly GridView _gridView;
+    private readonly GridViewColumn _locationColumn;
+    private ViewMode _appliedView = ViewMode.Details;
 
     public FilePane()
     {
         InitializeComponent();
+        _gridView = (GridView)List.View;
+        _locationColumn = new GridViewColumn
+        {
+            Header = new GridViewColumnHeader { Content = "위치" },
+            Width = 200,
+            CellTemplate = (DataTemplate)FindResource("Cell.Location"),
+        };
         DataContextChanged += (_, _) => AttachPane(DataContext as PaneViewModel);
         Loaded += (_, _) => EnsureHooks();
         IsVisibleChanged += (_, _) => EnsureHooks();
     }
 
-    public MainViewModel? Main { get; set; }
+    public MainViewModel? Main
+    {
+        get => _main;
+        set
+        {
+            if (_main is not null) _main.PropertyChanged -= OnMainPropertyChanged;
+            _main = value;
+            if (_main is not null) _main.PropertyChanged += OnMainPropertyChanged;
+            ApplyView();
+        }
+    }
 
     /// <summary>세로 스크롤 위치 변경 (비교 모드 좌우 동기화용).</summary>
     public event EventHandler<double>? VerticalScrolled;
@@ -125,12 +147,65 @@ public partial class FilePane : UserControl
         }
 
         UpdateSortGlyphs();
+        UpdateLocationColumn();
+        ApplyView();
     }
 
     private void OnTabPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(TabViewModel.SortBy) or nameof(TabViewModel.SortDescending))
             UpdateSortGlyphs();
+        else if (e.PropertyName is nameof(TabViewModel.IsRecursiveSearch))
+            UpdateLocationColumn();
+    }
+
+    private void OnMainPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(MainViewModel.ViewMode) or nameof(MainViewModel.Mode)) ApplyView();
+    }
+
+    /// <summary>자세히 / 아이콘 보기 전환. 비교 모드는 행 정렬이 필요하므로 항상 자세히 보기.</summary>
+    private void ApplyView()
+    {
+        var mode = _main is null || _main.IsCompareMode || _tab?.IsCompareView == true ? ViewMode.Details : _main.ViewMode;
+        if (mode == _appliedView) return;
+        _appliedView = mode;
+
+        if (mode == ViewMode.Details)
+        {
+            List.ItemTemplate = null;
+            List.ClearValue(ItemsControl.ItemsPanelProperty);
+            List.ItemContainerStyle = (Style)FindResource("ListViewItem.File");
+            List.View = _gridView;
+        }
+        else
+        {
+            var large = mode == ViewMode.LargeIcons;
+            List.View = null;
+            List.ItemsPanel = (ItemsPanelTemplate)FindResource(large ? "Panel.LargeIcons" : "Panel.MediumIcons");
+            List.ItemTemplate = (DataTemplate)FindResource(large ? "Tile.Large" : "Tile.Medium");
+            List.ItemContainerStyle = (Style)FindResource("ListViewItem.Tile");
+        }
+
+        // 템플릿이 바뀌면 내부 ScrollViewer도 새로 만들어지므로 다시 연결
+        _scroll = null;
+        Dispatcher.BeginInvoke(EnsureHooks, DispatcherPriority.Loaded);
+        if (List.SelectedItem is { } selected) Dispatcher.BeginInvoke(() => List.ScrollIntoView(selected), DispatcherPriority.Loaded);
+    }
+
+    private void UpdateLocationColumn()
+    {
+        var show = _tab?.IsRecursiveSearch == true;
+        var present = _gridView.Columns.Contains(_locationColumn);
+        if (show && !present) _gridView.Columns.Insert(1, _locationColumn);
+        else if (!show && present) _gridView.Columns.Remove(_locationColumn);
+    }
+
+    private void OnListMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.Control || _main is null) return;
+        _main.CycleViewMode(e.Delta > 0 ? 1 : -1);
+        e.Handled = true;
     }
 
     private void UpdateSortGlyphs()
@@ -220,6 +295,12 @@ public partial class FilePane : UserControl
         {
             if (_tab is not null) _tab.SearchText = string.Empty;
             FocusList();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Enter && _tab is { SearchSubfolders: false } tab && tab.SearchText.Trim().Length > 0)
+        {
+            // Enter: 하위 폴더까지 검색 (검색란에 그대로 머무름)
+            tab.SearchSubfolders = true;
             e.Handled = true;
         }
         else if (e.Key is Key.Enter or Key.Down)

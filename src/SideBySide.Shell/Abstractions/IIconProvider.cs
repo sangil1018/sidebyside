@@ -11,6 +11,15 @@ public interface IIconProvider
     /// <summary>백그라운드에서 아이콘을 읽어 콜백 (임의 스레드에서 호출됨).</summary>
     void Request(string path, bool isDirectory, Action<ImageSource?> callback);
 
+    /// <summary>
+    /// 아이콘 보기용 큰 이미지: 사진·동영상은 썸네일, 그 외는 큰 아이콘 (<paramref name="size"/> 픽셀 정사각형 안에 맞춤).
+    /// 캐시에 있으면 즉시 반환, 없으면 null.
+    /// </summary>
+    ImageSource? TryGetCachedImage(string path, int size);
+
+    /// <summary>큰 이미지를 백그라운드에서 읽어 콜백 (최근 요청 우선, 임의 스레드에서 호출됨).</summary>
+    void RequestImage(string path, int size, Action<ImageSource?> callback);
+
     /// <summary>"텍스트 문서", "파일 폴더" 같은 형식 이름 (확장자별 캐시).</summary>
     string GetTypeName(string path, bool isDirectory);
 

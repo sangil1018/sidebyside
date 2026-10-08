@@ -200,6 +200,22 @@ public partial class MainWindow : Window
         menu.IsOpen = true;
     }
 
+    private void OnViewMenu(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu { PlacementTarget = ViewButton, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        foreach (var (id, mode) in new[]
+                 {
+                     (CommandIds.ViewLargeIcons, ViewMode.LargeIcons),
+                     (CommandIds.ViewMediumIcons, ViewMode.MediumIcons),
+                     (CommandIds.ViewDetails, ViewMode.Details),
+                 })
+        {
+            menu.Items.Add(MenuItemFor(id, ViewModel.ViewMode == mode ? "\uE73E" : string.Empty));
+        }
+
+        menu.IsOpen = true;
+    }
+
     private MenuItem MenuItemFor(string id, string glyph)
     {
         var def = CommandRegistry.Get(id);

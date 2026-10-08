@@ -9,6 +9,94 @@
              d:DataContext="{d:DesignInstance vm:PaneViewModel}"
              PreviewMouseDown="OnAnyMouseDown"
              GotKeyboardFocus="OnAnyKeyboardFocus">
+  <UserControl.Resources>
+    <!-- 아이콘 보기: 같은 크기 칸에 줄 바꿈 배치 (가상화) -->
+    <ItemsPanelTemplate x:Key="Panel.MediumIcons">
+      <views:VirtualizingWrapPanel ItemWidth="96" ItemHeight="100" Margin="6,6,0,0" />
+    </ItemsPanelTemplate>
+    <ItemsPanelTemplate x:Key="Panel.LargeIcons">
+      <views:VirtualizingWrapPanel ItemWidth="128" ItemHeight="152" Margin="6,6,0,0" />
+    </ItemsPanelTemplate>
+
+    <Style x:Key="ListViewItem.Tile" TargetType="ListViewItem">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+      <Setter Property="Margin" Value="2" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListViewItem">
+            <Border x:Name="Bd" Background="Transparent" CornerRadius="{StaticResource Radius}" Padding="4">
+              <ContentPresenter />
+            </Border>
+            <ControlTemplate.Triggers>
+              <DataTrigger Binding="{Binding IsHidden}" Value="True">
+                <Setter Property="Opacity" Value="0.6" />
+              </DataTrigger>
+              <DataTrigger Binding="{Binding IsCut}" Value="True">
+                <Setter Property="Opacity" Value="0.45" />
+              </DataTrigger>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.Hover}" />
+              </Trigger>
+              <MultiTrigger>
+                <MultiTrigger.Conditions>
+                  <Condition Property="IsSelected" Value="True" />
+                  <Condition Property="Selector.IsSelectionActive" Value="False" />
+                </MultiTrigger.Conditions>
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.SelectedInactive}" />
+              </MultiTrigger>
+              <MultiTrigger>
+                <MultiTrigger.Conditions>
+                  <Condition Property="IsSelected" Value="True" />
+                  <Condition Property="Selector.IsSelectionActive" Value="True" />
+                </MultiTrigger.Conditions>
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.Selected}" />
+              </MultiTrigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <DataTemplate x:Key="Tile.Medium" DataType="{x:Type vm:FileItemViewModel}">
+      <StackPanel ToolTip="{Binding Label}">
+        <Grid Width="48" Height="48" Margin="0,2,0,4">
+          <!-- 큰 이미지를 읽기 전/실패 시 작은 아이콘으로 대체 -->
+          <Image Source="{Binding Icon}" Width="32" Height="32" RenderOptions.BitmapScalingMode="HighQuality"
+                 Visibility="{Binding MediumImage, Converter={StaticResource NullToVisInv}}" />
+          <Image Source="{Binding MediumImage}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+        </Grid>
+        <TextBlock Text="{Binding Label}" TextAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                   MaxHeight="34" Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisInv}}" />
+        <TextBox Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}" Padding="2,1"
+                 Visibility="{Binding IsEditing, Converter={StaticResource BoolToVis}}"
+                 IsVisibleChanged="OnRenameBoxVisibleChanged" PreviewKeyDown="OnRenameKeyDown" LostKeyboardFocus="OnRenameLostFocus" />
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate x:Key="Tile.Large" DataType="{x:Type vm:FileItemViewModel}">
+      <StackPanel ToolTip="{Binding Label}">
+        <Grid Width="96" Height="96" Margin="0,2,0,6">
+          <!-- 큰 이미지를 읽기 전/실패 시 작은 아이콘으로 대체 -->
+          <Image Source="{Binding Icon}" Width="48" Height="48" RenderOptions.BitmapScalingMode="HighQuality"
+                 Visibility="{Binding LargeImage, Converter={StaticResource NullToVisInv}}" />
+          <Image Source="{Binding LargeImage}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+        </Grid>
+        <TextBlock Text="{Binding Label}" TextAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                   MaxHeight="34" Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisInv}}" />
+        <TextBox Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}" Padding="2,1"
+                 Visibility="{Binding IsEditing, Converter={StaticResource BoolToVis}}"
+                 IsVisibleChanged="OnRenameBoxVisibleChanged" PreviewKeyDown="OnRenameKeyDown" LostKeyboardFocus="OnRenameLostFocus" />
+      </StackPanel>
+    </DataTemplate>
+
+    <!-- 하위 폴더 검색 결과의 "위치" 열 -->
+    <DataTemplate x:Key="Cell.Location" DataType="{x:Type vm:FileItemViewModel}">
+      <TextBlock Text="{Binding Location}" Foreground="{DynamicResource Brush.TextSecondary}" TextTrimming="CharacterEllipsis"
+                 ToolTip="{Binding Location}" />
+    </DataTemplate>
+  </UserControl.Resources>
+
   <Grid Background="{DynamicResource Brush.SurfaceBg}">
     <Grid.RowDefinitions>
       <RowDefinition Height="36" />
@@ -99,8 +187,8 @@
         <Button Style="{StaticResource Button.Icon}" Content="&#xE72C;" Click="OnRefresh" ToolTip="새로 고침 (F5)" />
       </StackPanel>
       <views:AddressBar x:Name="Address" Grid.Column="1" Margin="4,0,6,0" DataContext="{Binding ActiveTab}" />
-      <Grid Grid.Column="2" Width="190">
-        <TextBox x:Name="SearchBox" Padding="26,4,6,4"
+      <Grid Grid.Column="2" Width="210">
+        <TextBox x:Name="SearchBox" Padding="26,4,30,4"
                  Text="{Binding ActiveTab.SearchText, UpdateSourceTrigger=PropertyChanged, Delay=150}"
                  PreviewKeyDown="OnSearchKeyDown" />
         <TextBlock Style="{StaticResource Glyph}" Text="&#xE721;" FontSize="12" HorizontalAlignment="Left" Margin="9,0,0,0"
@@ -108,6 +196,10 @@
         <TextBlock Text="검색" Margin="27,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
                    Foreground="{DynamicResource Brush.TextDisabled}"
                    Visibility="{Binding ActiveTab.SearchText, Converter={StaticResource NullToVisInv}}" />
+        <ToggleButton Style="{StaticResource Button.SmallIcon}" Content="&#xE8B7;" FontSize="11" Width="24" Height="22"
+                      HorizontalAlignment="Right" Margin="0,0,4,0" Focusable="False"
+                      IsChecked="{Binding ActiveTab.SearchSubfolders}"
+                      ToolTip="하위 폴더까지 검색 (검색란에서 Enter)" />
       </Grid>
     </Grid>
 
@@ -127,6 +219,7 @@
                           DragOver="OnDragOver"
                           DragEnter="OnDragOver"
                           Drop="OnDrop"
+                          PreviewMouseWheel="OnListMouseWheel"
                           GridViewColumnHeader.Click="OnHeaderClick">
         <ListView.View>
           <GridView AllowsColumnReorder="False">
@@ -214,7 +307,7 @@
 
       <!-- 로딩 표시 (상단 얇은 선) -->
       <Rectangle Height="2" VerticalAlignment="Top" Fill="{DynamicResource Brush.Accent}" Opacity="0.7" IsHitTestVisible="False"
-                 Visibility="{Binding ActiveTab.IsLoading, Converter={StaticResource BoolToVis}}" />
+                 Visibility="{Binding ActiveTab.IsBusy, Converter={StaticResource BoolToVis}}" />
 
       <TextBlock Text="{Binding ActiveTab.Error}" Foreground="{DynamicResource Brush.TextSecondary}" TextWrapping="Wrap"
                  HorizontalAlignment="Center" VerticalAlignment="Top" Margin="24,64,24,0" TextAlignment="Center"
@@ -224,12 +317,12 @@
         <TextBlock.Style>
           <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Secondary}">
             <Setter Property="Visibility" Value="Collapsed" />
-            <Setter Property="Text" Value="이 폴더는 비어 있습니다." />
+            <Setter Property="Text" Value="{Binding ActiveTab.EmptyText}" />
             <Style.Triggers>
               <MultiDataTrigger>
                 <MultiDataTrigger.Conditions>
                   <Condition Binding="{Binding ActiveTab.Items.Count}" Value="0" />
-                  <Condition Binding="{Binding ActiveTab.IsLoading}" Value="False" />
+                  <Condition Binding="{Binding ActiveTab.IsBusy}" Value="False" />
                   <Condition Binding="{Binding ActiveTab.Error}" Value="{x:Null}" />
                 </MultiDataTrigger.Conditions>
                 <Setter Property="Visibility" Value="Visible" />

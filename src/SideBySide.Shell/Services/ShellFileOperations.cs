@@ -1,5 +1,7 @@
 using System.IO;
+using System.Security.Principal;
 using SideBySide.Core.FileSystem;
+using SideBySide.Core.RecycleBin;
 using SideBySide.Shell.Abstractions;
 using static SideBySide.Shell.Interop.NativeMethods;
 
@@ -22,6 +24,19 @@ public sealed class ShellFileOperations(IOwnerWindow owner) : IFileOperations
 
     public Task<bool> RenameAsync(string path, string newName)
         => RunAsync(FO_RENAME, [path], Path.Combine(Path.GetDirectoryName(path)!, newName), FOF_ALLOWUNDO);
+
+    public Task<IReadOnlyList<string>> RestoreFromRecycleBinAsync(IReadOnlyList<string> originalPaths)
+    {
+        var sid = WindowsIdentity.GetCurrent().User?.Value;
+        if (sid is null) return Task.FromResult<IReadOnlyList<string>>([]);
+
+        // 드라이브마다 <루트>\$Recycle.Bin\<SID> 폴더에 보관됨
+        return Task.Run(() => RecycleBinStore.Restore(originalPaths, path =>
+        {
+            var root = Path.GetPathRoot(path);
+            return string.IsNullOrEmpty(root) ? null : Path.Combine(root, "$Recycle.Bin", sid);
+        }));
+    }
 
     public string CreateFolder(string parentDirectory)
     {

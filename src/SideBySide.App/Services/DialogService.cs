@@ -1,6 +1,7 @@
 using System.Windows;
 using SideBySide.App.Dialogs;
 using SideBySide.Core.Filtering;
+using SideBySide.Core.Rename;
 using SideBySide.Core.Sessions;
 
 namespace SideBySide.App.Services;
@@ -35,8 +36,11 @@ public sealed class DialogService(ThemeManager theme) : IDialogService
         return dialog.ShowDialog() == true ? dialog.Result : null;
     }
 
-    public bool BatchRename(IReadOnlyList<string> paths)
-        => Prepare(new BatchRenameDialog(paths)).ShowDialog() == true;
+    public IReadOnlyList<RenamePreview>? BatchRename(IReadOnlyList<string> paths)
+    {
+        var dialog = Prepare(new BatchRenameDialog(paths));
+        return dialog.ShowDialog() == true ? dialog.Applied : null;
+    }
 
     public CompareSession? PickSession(IList<CompareSession> sessions)
     {

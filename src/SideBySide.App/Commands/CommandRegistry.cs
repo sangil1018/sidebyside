@@ -73,6 +73,9 @@ public static class CommandRegistry
         new(CommandIds.ToggleHidden, "숨김 항목 표시", Key.H, Ctrl, CommandScope.Global),
         new(CommandIds.ToggleTheme, "라이트 / 다크 테마", Key.T, CtrlShift, CommandScope.Global),
         new(CommandIds.SwitchPane, "왼쪽 / 오른쪽 창 전환", Key.Tab, None, CommandScope.FileList),
+        new(CommandIds.ViewDetails, "자세히", Key.D6, CtrlShift, CommandScope.Global, "Ctrl+Shift+6"),
+        new(CommandIds.ViewMediumIcons, "중간 아이콘", Key.D3, CtrlShift, CommandScope.Global, "Ctrl+Shift+3"),
+        new(CommandIds.ViewLargeIcons, "큰 아이콘", Key.D2, CtrlShift, CommandScope.Global, "Ctrl+Shift+2"),
 
         // 탭
         new(CommandIds.NewTab, "새 탭", Key.T, Ctrl, CommandScope.Global),
@@ -90,11 +93,13 @@ public static class CommandRegistry
         new(CommandIds.FocusAddress, "주소 표시줄", Key.F4, None, CommandScope.Global, IsAlternate: true),
         new(CommandIds.FocusAddress, "주소 표시줄", Key.D, Alt, CommandScope.Global, IsAlternate: true),
         new(CommandIds.FocusSearch, "현재 폴더에서 검색", Key.F, Ctrl, CommandScope.Global),
+        new(CommandIds.SearchSubfolders, "하위 폴더까지 검색", Key.None, None, CommandScope.Global, "검색란에서 Enter"),
         new(CommandIds.Cancel, "작업 취소", Key.Escape, None, CommandScope.Global),
 
         // 파일 작업
         new(CommandIds.Open, "열기", Key.Return, None, CommandScope.FileList),
         new(CommandIds.Rename, "이름 바꾸기", Key.F2, None, CommandScope.FileList),
+        new(CommandIds.Undo, "실행 취소", Key.Z, Ctrl, CommandScope.FileList),
         new(CommandIds.Delete, "삭제 (휴지통)", Key.Delete, None, CommandScope.FileList),
         new(CommandIds.DeletePermanent, "영구 삭제", Key.Delete, Shift, CommandScope.FileList),
         new(CommandIds.Copy, "복사", Key.C, Ctrl, CommandScope.FileList),

@@ -106,3 +106,11 @@ internal interface IInitializeWithStream
 {
     void Initialize(IStream pstream, uint grfMode);
 }
+
+[ComImport]
+[Guid("BCC18B79-BA16-442F-80C4-8A59C30C463B")]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+internal interface IShellItemImageFactory
+{
+    [PreserveSig] int GetImage(NativeMethods.SIZE size, uint flags, out IntPtr phbm);
+}

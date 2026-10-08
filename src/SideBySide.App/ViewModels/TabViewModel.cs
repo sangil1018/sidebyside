@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SideBySide.App.Infrastructure;
@@ -48,19 +49,34 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
     private FileSystemWatcher? _watcher;
     private IReadOnlyList<FileItemViewModel> _selected = [];
     private int _buildVersion;
+    private readonly DispatcherTimer _searchTimer;
+
+    /// <summary>하위 폴더 검색 결과 최대 개수 (그 이상은 검색어를 좁히도록 안내).</summary>
+    public const int MaxSearchResults = 20000;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Title), nameof(IsThisPc), nameof(CanGoUp))]
     private string _path = ThisPc;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBusy))]
     private bool _isLoading;
 
     [ObservableProperty]
     private string? _error;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EmptyText), nameof(IsRecursiveSearch))]
     private string _searchText = string.Empty;
+
+    /// <summary>검색에 하위 폴더 포함 (검색란 옆 토글 또는 Enter).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRecursiveSearch))]
+    private bool _searchSubfolders;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBusy))]
+    private bool _isSearching;
 
     [ObservableProperty]
     private SortColumn _sortBy = SortColumn.Name;
@@ -81,6 +97,12 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
         _dispatcher = Dispatcher.CurrentDispatcher;
         _refreshTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(300), DispatcherPriority.Background, OnRefreshTimer, _dispatcher);
         _refreshTimer.Stop();
+        _searchTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(300), DispatcherPriority.Background, (_, _) =>
+        {
+            _searchTimer!.Stop();
+            _ = RefreshViewAsync(null);
+        }, _dispatcher);
+        _searchTimer.Stop();
         _path = NormalizePath(path);
         _ctx.FilterChanged += OnFilterChanged;
         _ctx.CutPathsChanged += OnCutPathsChanged;
@@ -96,6 +118,13 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
 
     /// <summary>한 번이라도 목록을 읽었는지 (비활성 탭은 처음 활성화될 때 읽는다).</summary>
     public bool HasLoaded { get; private set; }
+
+    /// <summary>하위 폴더까지 검색 중인 상태 (목록이 검색 결과로 바뀌고 "위치" 열이 보인다).</summary>
+    public bool IsRecursiveSearch => SearchSubfolders && SearchText.Trim().Length > 0 && !IsThisPc && !IsCompareView;
+
+    public bool IsBusy => IsLoading || IsSearching;
+
+    public string EmptyText => SearchText.Trim().Length > 0 ? "검색 결과가 없습니다." : "이 폴더는 비어 있습니다.";
 
     public bool CanGoBack => _back.Count > 0;
 
@@ -226,6 +255,7 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
                 break;
         }
 
+        SearchSubfolders = false;
         SearchText = string.Empty;
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(CanGoForward));
@@ -260,6 +290,7 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
             return Task.CompletedTask;
         }
 
+        if (IsRecursiveSearch) return RunRecursiveSearchAsync();
         return LoadAsync(_selected.Select(s => s.Name).ToList());
     }
 
@@ -287,7 +318,7 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
 
             if (cts.IsCancellationRequested) return;
             if (_watcher is null) SetupWatcher();
-            await RebuildAsync(select);
+            await RefreshViewAsync(select);
         }
         catch (OperationCanceledException)
         {
@@ -336,9 +367,96 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
         _ = RebuildAsync(_selected.Select(s => s.Name).ToList());
     }
 
-    partial void OnSearchTextChanged(string value)
+    partial void OnSearchTextChanged(string value) => SearchChanged();
+
+    partial void OnSearchSubfoldersChanged(bool value) => SearchChanged();
+
+    private void SearchChanged()
     {
-        if (!IsCompareView) _ = RebuildAsync(null);
+        if (IsCompareView) return;
+        _searchTimer.Stop();
+        if (IsRecursiveSearch)
+        {
+            // 입력 중에는 디스크를 계속 뒤지지 않도록 잠깐 기다렸다 시작
+            _searchTimer.Start();
+            return;
+        }
+
+        if (IsSearching) _loadCts?.Cancel();
+        IsSearching = false;
+        _ = RebuildAsync(null);
+    }
+
+    /// <summary>현재 상태에 맞게 목록을 다시 만든다: 하위 폴더 검색이면 검색, 아니면 필터·정렬만.</summary>
+    private Task RefreshViewAsync(IReadOnlyCollection<string>? select)
+        => IsRecursiveSearch ? RunRecursiveSearchAsync() : RebuildAsync(select);
+
+    /// <summary>
+    /// 하위 폴더 검색. 백그라운드 스레드가 찾는 대로 큐에 넣고 UI는 150ms마다 받아 목록에 추가한다
+    /// (첫 결과가 바로 보이고, 검색 중에도 UI가 멈추지 않음). 필터로 제외된 폴더는 들어가지 않는다.
+    /// </summary>
+    private async Task RunRecursiveSearchAsync()
+    {
+        _loadCts?.Cancel();
+        var cts = _loadCts = new CancellationTokenSource();
+        ++_buildVersion;
+        var root = Path;
+        var filter = _ctx.Filter;
+        var matcher = BuildSearch(SearchText.Trim());
+        if (matcher is null) return;
+
+        IsSearching = true;
+        Error = null;
+        HiddenCount = 0;
+        Items.ReplaceAll([]);
+
+        var queue = new ConcurrentQueue<FileEntry>();
+        var worker = Task.Run(() =>
+        {
+            var count = 0;
+            foreach (var entry in DirectoryLoader.Search(
+                root,
+                (name, isDir, attrs) => filter.IsVisible(name, isDir, attrs) && matcher(name),
+                (name, attrs) => filter.IsVisible(name, true, attrs),
+                cts.Token))
+            {
+                queue.Enqueue(entry);
+                if (++count >= MaxSearchResults) break;
+            }
+        }, cts.Token);
+
+        try
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                await Task.Delay(150);
+                if (cts.IsCancellationRequested) break;
+                var finished = worker.IsCompleted;
+                while (queue.TryDequeue(out var entry))
+                {
+                    var relative = System.IO.Path.GetRelativePath(root, System.IO.Path.GetDirectoryName(entry.FullPath) ?? root);
+                    Items.Add(new FileItemViewModel(entry, _ctx.Icons) { Location = relative == "." ? string.Empty : relative });
+                }
+
+                if (finished && queue.IsEmpty) break;
+            }
+
+            await worker;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Error = ex.Message;
+        }
+        finally
+        {
+            if (ReferenceEquals(_loadCts, cts)) IsSearching = false;
+        }
+
+        if (!cts.IsCancellationRequested && Items.Count >= MaxSearchResults)
+            Error = $"결과가 너무 많아 처음 {MaxSearchResults:N0}개만 표시합니다. 검색어를 좁혀 보세요.";
     }
 
     private async Task RebuildAsync(IReadOnlyCollection<string>? select)
@@ -496,12 +614,14 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
             return;
         }
 
+        // 하위 폴더 검색 결과는 현재 폴더 감시와 무관하므로 자동 갱신하지 않는다 (F5로 다시 검색)
+        if (IsRecursiveSearch) return;
         _ = RefreshAsync();
     }
 
     private void OnFilterChanged(object? sender, EventArgs e)
     {
-        if (!IsCompareView) _ = RebuildAsync(_selected.Select(s => s.Name).ToList());
+        if (!IsCompareView) _ = RefreshViewAsync(_selected.Select(s => s.Name).ToList());
     }
 
     private void OnCutPathsChanged(object? sender, EventArgs e)
@@ -514,6 +634,7 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
         _loadCts?.Cancel();
         _watcher?.Dispose();
         _refreshTimer.Stop();
+        _searchTimer.Stop();
         _ctx.FilterChanged -= OnFilterChanged;
         _ctx.CutPathsChanged -= OnCutPathsChanged;
     }

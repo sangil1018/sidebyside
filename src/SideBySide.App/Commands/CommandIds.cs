@@ -11,6 +11,9 @@ public static class CommandIds
     public const string ToggleHidden = nameof(ToggleHidden);
     public const string ToggleTheme = nameof(ToggleTheme);
     public const string SwitchPane = nameof(SwitchPane);
+    public const string ViewDetails = nameof(ViewDetails);
+    public const string ViewMediumIcons = nameof(ViewMediumIcons);
+    public const string ViewLargeIcons = nameof(ViewLargeIcons);
 
     // 탭
     public const string NewTab = nameof(NewTab);
@@ -25,10 +28,12 @@ public static class CommandIds
     public const string Refresh = nameof(Refresh);
     public const string FocusAddress = nameof(FocusAddress);
     public const string FocusSearch = nameof(FocusSearch);
+    public const string SearchSubfolders = nameof(SearchSubfolders);
     public const string Cancel = nameof(Cancel);
 
     // 파일 작업
     public const string Open = nameof(Open);
+    public const string Undo = nameof(Undo);
     public const string Rename = nameof(Rename);
     public const string Delete = nameof(Delete);
     public const string DeletePermanent = nameof(DeletePermanent);

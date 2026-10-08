@@ -16,6 +16,10 @@ public sealed partial class FileItemViewModel : ObservableObject
     private readonly IIconProvider _icons;
     private ImageSource? _icon;
     private bool _iconRequested;
+    private ImageSource? _mediumImage;
+    private bool _mediumRequested;
+    private ImageSource? _largeImage;
+    private bool _largeRequested;
     private string? _typeText;
 
     [ObservableProperty]
@@ -82,6 +86,15 @@ public sealed partial class FileItemViewModel : ObservableObject
 
     public string TypeText => Entry is null ? string.Empty : _typeText ??= IsDrive ? "드라이브" : _icons.GetTypeName(Entry.FullPath, IsDirectory);
 
+    /// <summary>하위 폴더 검색 결과에서 검색 시작 폴더 기준 상대 위치 (예: "src\\Views").</summary>
+    public string Location { get; init; } = string.Empty;
+
+    /// <summary>중간 아이콘 보기 (48px).</summary>
+    public ImageSource? MediumImage => LoadImage(48, ref _mediumImage, ref _mediumRequested, nameof(MediumImage));
+
+    /// <summary>큰 아이콘 보기 (96px, 사진·동영상은 썸네일).</summary>
+    public ImageSource? LargeImage => LoadImage(96, ref _largeImage, ref _largeRequested, nameof(LargeImage));
+
     /// <summary>비교 모드에서 반대편 같은 행 항목.</summary>
     public FileItemViewModel? Partner { get; set; }
 
@@ -105,6 +118,24 @@ public sealed partial class FileItemViewModel : ObservableObject
 
             return _icon;
         }
+    }
+
+    private ImageSource? LoadImage(int size, ref ImageSource? field, ref bool requested, string propertyName)
+    {
+        if (requested || Entry is null) return field;
+        requested = true;
+        field = _icons.TryGetCachedImage(Entry.FullPath, size);
+        if (field is null)
+        {
+            _icons.RequestImage(Entry.FullPath, size, image =>
+            {
+                if (size == 48) _mediumImage = image;
+                else _largeImage = image;
+                OnPropertyChanged(propertyName);
+            });
+        }
+
+        return field;
     }
 
     public static FileItemViewModel Placeholder(string name, bool isDirectory, IIconProvider icons)

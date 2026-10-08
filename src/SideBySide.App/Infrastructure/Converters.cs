@@ -52,3 +52,10 @@ public sealed class RatioToWidthConverter : IMultiValueConverter
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }
+
+public sealed class NegateConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => value is double d ? -d : 0d;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => value is double d ? -d : 0d;
+}

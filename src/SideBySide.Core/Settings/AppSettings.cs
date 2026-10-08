@@ -12,6 +12,14 @@ public enum ThemeMode
     Dark,
 }
 
+/// <summary>파일 목록 보기 방식. 비교 모드는 항상 자세히 보기.</summary>
+public enum ViewMode
+{
+    Details,
+    MediumIcons,
+    LargeIcons,
+}
+
 public sealed class WindowPlacement
 {
     public double Left { get; set; } = double.NaN;
@@ -49,6 +57,8 @@ public sealed class AppSettings
     public bool DualPane { get; set; } = true;
 
     public bool ShowHidden { get; set; }
+
+    public ViewMode ViewMode { get; set; } = ViewMode.Details;
 
     public bool ShowPreview { get; set; }
 

@@ -120,7 +120,7 @@ public sealed partial class PaneViewModel : ObservableObject
         var tab = new TabViewModel(_ctx, path);
         tab.PropertyChanged += (_, e) =>
         {
-            if (ReferenceEquals(tab, ActiveTab) && e.PropertyName is nameof(TabViewModel.Path) or nameof(TabViewModel.HiddenCount))
+            if (ReferenceEquals(tab, ActiveTab) && e.PropertyName is nameof(TabViewModel.Path) or nameof(TabViewModel.HiddenCount) or nameof(TabViewModel.IsSearching))
                 StateChanged?.Invoke(this, EventArgs.Empty);
         };
         tab.Items.CollectionChanged += (_, _) =>

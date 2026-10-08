@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SideBySide.App.Commands;
 using SideBySide.App.Infrastructure;
@@ -6,7 +7,9 @@ using SideBySide.App.Services;
 using SideBySide.Core.Diff;
 using SideBySide.Core.Filtering;
 using SideBySide.Core.FileSystem;
+using SideBySide.Core.Rename;
 using SideBySide.Core.Sessions;
+using SideBySide.Core.Settings;
 
 namespace SideBySide.App.ViewModels;
 
@@ -24,7 +27,10 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private readonly ExplorerContext _ctx;
     private readonly ThemeManager _theme;
+    private readonly UndoService _undo;
+    private readonly DispatcherTimer _noticeTimer;
     private CancellationTokenSource? _freeSpaceCts;
+    private string? _freeSpaceRoot;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCompareMode), nameof(IsRightPaneVisible), nameof(IsSidebarVisible))]
@@ -66,11 +72,26 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _windowTitle = "SideBySide";
 
-    public MainViewModel(ExplorerContext ctx, ThemeManager theme, CommandHost commands)
+    /// <summary>상태 표시줄에 잠깐 보여줄 알림 (실행 취소 결과 등).</summary>
+    [ObservableProperty]
+    private string _notice = string.Empty;
+
+    [ObservableProperty]
+    private ViewMode _viewMode;
+
+    public MainViewModel(ExplorerContext ctx, ThemeManager theme, CommandHost commands, UndoService undo)
     {
         _ctx = ctx;
         _theme = theme;
+        _undo = undo;
         Commands = commands;
+        _noticeTimer = new DispatcherTimer(TimeSpan.FromSeconds(4), DispatcherPriority.Background, (_, _) =>
+        {
+            _noticeTimer!.Stop();
+            Notice = string.Empty;
+        }, Dispatcher.CurrentDispatcher);
+        _noticeTimer.Stop();
+        _undo.Changed += (_, _) => Commands.RaiseCanExecuteChanged();
         var s = ctx.Settings;
 
         Left = new PaneViewModel(ctx, PaneSide.Left, s.Left);
@@ -83,6 +104,7 @@ public sealed partial class MainViewModel : ObservableObject
         _showPreview = s.ShowPreview;
         _showSidebar = s.ShowSidebar;
         _showHidden = s.ShowHidden;
+        _viewMode = s.ViewMode;
         _activePane = Left;
         Left.IsActive = true;
 
@@ -194,6 +216,7 @@ public sealed partial class MainViewModel : ObservableObject
         s.DualPane = IsDualPane;
         s.ShowPreview = ShowPreview;
         s.ShowSidebar = ShowSidebar;
+        s.ViewMode = ViewMode;
         Compare.SaveOptions();
     }
 
@@ -238,8 +261,29 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
-        if (await _ctx.FileOperations.RenameAsync(item.FullPath, newName))
+        var oldPath = item.FullPath;
+        var oldName = item.Name;
+        if (await _ctx.FileOperations.RenameAsync(oldPath, newName))
+        {
+            var newPath = Path.Combine(Path.GetDirectoryName(oldPath)!, newName);
+            _undo.Push("이름 바꾸기", () => _ctx.FileOperations.RenameAsync(newPath, oldName));
             await RefreshAfterChangeAsync(tab, [newName]);
+        }
+    }
+
+    /// <summary>Ctrl+마우스 휠: 자세히 ↔ 중간 아이콘 ↔ 큰 아이콘.</summary>
+    public void CycleViewMode(int direction)
+    {
+        if (IsCompareMode) return;
+        var next = Math.Clamp((int)ViewMode + Math.Sign(direction), 0, (int)ViewMode.LargeIcons);
+        ViewMode = (ViewMode)next;
+    }
+
+    public void ShowNotice(string text)
+    {
+        Notice = text;
+        _noticeTimer.Stop();
+        _noticeTimer.Start();
     }
 
     public void ShowContextMenu(PaneViewModel pane, int screenX, int screenY, bool onBackground, bool extended)
@@ -265,9 +309,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (files.Any(f => PathNames.IsSameOrChildOf(destination, f))) return; // 자기 자신/하위로 이동 금지
         if (files.All(f => string.Equals(Path.GetDirectoryName(f), destination, StringComparison.OrdinalIgnoreCase))) return;
 
-        var ok = move
-            ? await _ctx.FileOperations.MoveAsync(files, destination)
-            : await _ctx.FileOperations.CopyAsync(files, destination);
+        var ok = await TransferAsync(files, destination, move);
         if (ok) await RefreshAfterChangeAsync(target, files.Select(Path.GetFileName).OfType<string>().ToList());
     }
 
@@ -284,6 +326,9 @@ public sealed partial class MainViewModel : ObservableObject
         c.Register(CommandIds.ToggleSidebar, () => ShowSidebar = !ShowSidebar);
         c.Register(CommandIds.ToggleHidden, () => ShowHidden = !ShowHidden);
         c.Register(CommandIds.ToggleTheme, () => _ctx.Settings.Theme = _theme.Cycle());
+        c.Register(CommandIds.ViewDetails, () => ViewMode = ViewMode.Details);
+        c.Register(CommandIds.ViewMediumIcons, () => { if (!IsCompareMode) ViewMode = ViewMode.MediumIcons; });
+        c.Register(CommandIds.ViewLargeIcons, () => { if (!IsCompareMode) ViewMode = ViewMode.LargeIcons; });
         // canExecute가 false면 키 입력이 처리되지 않고 컨트롤 기본 동작(Tab 이동 등)으로 넘어간다
         c.Register(CommandIds.SwitchPane, () =>
         {
@@ -304,10 +349,12 @@ public sealed partial class MainViewModel : ObservableObject
         c.Register(CommandIds.Refresh, Refresh);
         c.Register(CommandIds.FocusAddress, () => FocusAddressRequested?.Invoke(this, ActivePane));
         c.Register(CommandIds.FocusSearch, () => FocusSearchRequested?.Invoke(this, ActivePane));
+        c.Register(CommandIds.SearchSubfolders, () => ActiveTab.SearchSubfolders = !ActiveTab.SearchSubfolders);
         c.Register(CommandIds.Cancel, Cancel, () => (IsCompareMode && Compare.IsRunning) || ActiveTab.SearchText.Length > 0 || _ctx.CutPaths.Count > 0);
 
         // 파일 작업
         c.Register(CommandIds.Open, OpenSelection);
+        c.Register(CommandIds.Undo, () => _ = UndoAsync());
         c.Register(CommandIds.Rename, Rename);
         c.Register(CommandIds.Delete, () => _ = DeleteAsync(permanent: false));
         c.Register(CommandIds.DeletePermanent, () => _ = DeleteAsync(permanent: true));
@@ -445,8 +492,21 @@ public sealed partial class MainViewModel : ObservableObject
         {
             BeginRename(tab, items[0]);
         }
-        else if (items.Count > 1 && _ctx.Dialogs.BatchRename(items.Select(i => i.FullPath).ToList()))
+        else if (items.Count > 1 && _ctx.Dialogs.BatchRename(items.Select(i => i.FullPath).ToList()) is { Count: > 0 } applied)
         {
+            var reverse = applied.Select(p => new RenamePreview(p.NewPath, p.OriginalName, null)).ToList();
+            _undo.Push($"이름 바꾸기 ({applied.Count}개)", () => Task.Run(() =>
+            {
+                try
+                {
+                    BatchRenamer.Apply(reverse);
+                    return true;
+                }
+                catch (BatchRenameException)
+                {
+                    return false;
+                }
+            }));
             _ = RefreshAfterChangeAsync(tab, []);
         }
     }
@@ -462,7 +522,17 @@ public sealed partial class MainViewModel : ObservableObject
         var tab = ActiveTab;
         var paths = tab.SelectedPaths;
         if (paths.Count == 0) return;
-        if (await _ctx.FileOperations.DeleteAsync(paths, permanent)) await RefreshAfterChangeAsync(tab, []);
+        if (!await _ctx.FileOperations.DeleteAsync(paths, permanent)) return;
+        if (!permanent)
+        {
+            _undo.Push($"삭제 ({paths.Count}개)", async () =>
+            {
+                var restored = await _ctx.FileOperations.RestoreFromRecycleBinAsync(paths);
+                return restored.Count == paths.Count;
+            });
+        }
+
+        await RefreshAfterChangeAsync(tab, []);
     }
 
     private void SetClipboard(bool cut)
@@ -478,20 +548,13 @@ public sealed partial class MainViewModel : ObservableObject
         var tab = ActiveTab;
         if (tab.IsThisPc || _ctx.Clipboard.GetFiles() is not { } clip || clip.Paths.Count == 0) return;
 
-        bool ok;
-        if (clip.Cut)
+        var sameFolder = clip.Paths.All(p => string.Equals(Path.GetDirectoryName(p), tab.Path, StringComparison.OrdinalIgnoreCase));
+        if (clip.Cut && sameFolder) return;
+        var ok = await TransferAsync(clip.Paths, tab.Path, move: clip.Cut, renameOnCollision: !clip.Cut && sameFolder);
+        if (ok && clip.Cut)
         {
-            ok = await _ctx.FileOperations.MoveAsync(clip.Paths, tab.Path);
-            if (ok)
-            {
-                _ctx.Clipboard.Clear();
-                _ctx.SetCut([]);
-            }
-        }
-        else
-        {
-            var sameFolder = clip.Paths.All(p => string.Equals(Path.GetDirectoryName(p), tab.Path, StringComparison.OrdinalIgnoreCase));
-            ok = await _ctx.FileOperations.CopyAsync(clip.Paths, tab.Path, renameOnCollision: sameFolder);
+            _ctx.Clipboard.Clear();
+            _ctx.SetCut([]);
         }
 
         if (ok) await RefreshAfterChangeAsync(tab, clip.Paths.Select(Path.GetFileName).OfType<string>().ToList());
@@ -505,6 +568,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             var path = folder ? _ctx.FileOperations.CreateFolder(tab.Path) : _ctx.FileOperations.CreateTextFile(tab.Path);
             var name = Path.GetFileName(path);
+            _undo.Push(folder ? "새 폴더 만들기" : "새 파일 만들기", () => _ctx.FileOperations.DeleteAsync([path], permanent: false));
             if (tab.IsCompareView) await Compare.RunAsync(clearCache: true, select: [name]);
             else await tab.LoadAsync([name]);
 
@@ -525,7 +589,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (paths.Count == 0 || destination.Length == 0) return;
 
         if (IsCompareMode && !Directory.Exists(destination)) Directory.CreateDirectory(destination);
-        if (await _ctx.FileOperations.CopyAsync(paths, destination)) await RefreshAfterChangeAsync(to.ActiveTab, []);
+        if (await TransferAsync(paths, destination, move: false)) await RefreshAfterChangeAsync(to.ActiveTab, []);
     }
 
     private void EditFilter()
@@ -662,7 +726,10 @@ public sealed partial class MainViewModel : ObservableObject
     {
         var tab = ActiveTab;
         WindowTitle = $"{tab.Title} - SideBySide";
-        StatusText = IsCompareMode ? Compare.Summary : $"항목 {tab.Items.Count:N0}개";
+        StatusText = IsCompareMode ? Compare.Summary
+            : tab.IsSearching ? $"검색 중… {tab.Items.Count:N0}개 찾음"
+            : tab.IsRecursiveSearch ? $"검색 결과 {tab.Items.Count:N0}개"
+            : $"항목 {tab.Items.Count:N0}개";
 
         var selected = tab.SelectedItems.Where(i => !i.IsPlaceholder).ToList();
         if (selected.Count == 0)
@@ -683,9 +750,11 @@ public sealed partial class MainViewModel : ObservableObject
 
     private async Task UpdateFreeSpaceAsync(string path)
     {
+        var root = path.Length > 0 ? Path.GetPathRoot(path) : null;
+        if (string.Equals(root, _freeSpaceRoot, StringComparison.OrdinalIgnoreCase)) return;
+        _freeSpaceRoot = root;
         _freeSpaceCts?.Cancel();
         var cts = _freeSpaceCts = new CancellationTokenSource();
-        var root = path.Length > 0 ? Path.GetPathRoot(path) : null;
         if (string.IsNullOrEmpty(root))
         {
             FreeSpaceText = string.Empty;
@@ -709,6 +778,82 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (IsCompareMode) await Compare.RunAsync(clearCache: true, select: select.Count > 0 ? select : null, keepSelection: select.Count == 0);
         else await tab.LoadAsync(select.Count > 0 ? select : tab.SelectedItems.Select(i => i.Name).ToList());
+    }
+
+    /// <summary>
+    /// 복사/이동 + 실행 취소 기록. 작업 전후로 대상 폴더 목록을 비교해 새로 생긴 항목만 되돌린다
+    /// (덮어쓴 항목은 원래 내용을 복구할 수 없으므로 실행 취소 대상에서 제외).
+    /// </summary>
+    private async Task<bool> TransferAsync(IReadOnlyList<string> sources, string destination, bool move, bool renameOnCollision = false)
+    {
+        var before = SnapshotNames(destination);
+        var ok = move
+            ? await _ctx.FileOperations.MoveAsync(sources, destination)
+            : await _ctx.FileOperations.CopyAsync(sources, destination, renameOnCollision);
+
+        var created = SnapshotNames(destination).Except(before, StringComparer.OrdinalIgnoreCase)
+            .Select(name => Path.Combine(destination, name))
+            .ToList();
+        if (created.Count == 0) return ok;
+
+        if (move)
+        {
+            var origins = sources
+                .Select(src => (Moved: Path.Combine(destination, Path.GetFileName(src)), OriginalDir: Path.GetDirectoryName(src)!))
+                .Where(m => created.Contains(m.Moved, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+            _undo.Push($"이동 ({origins.Count}개)", async () =>
+            {
+                var all = true;
+                foreach (var group in origins.GroupBy(o => o.OriginalDir, StringComparer.OrdinalIgnoreCase))
+                    all &= await _ctx.FileOperations.MoveAsync(group.Select(g => g.Moved).ToList(), group.Key);
+                return all;
+            });
+        }
+        else
+        {
+            _undo.Push($"복사 ({created.Count}개)", () => _ctx.FileOperations.DeleteAsync(created, permanent: false));
+        }
+
+        return ok;
+    }
+
+    private static HashSet<string> SnapshotNames(string directory)
+    {
+        try
+        {
+            return Directory.Exists(directory)
+                ? new HashSet<string>(Directory.EnumerateFileSystemEntries(directory).Select(Path.GetFileName).OfType<string>(), StringComparer.OrdinalIgnoreCase)
+                : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private async Task UndoAsync()
+    {
+        var result = await _undo.UndoAsync();
+        if (result is null)
+        {
+            ShowNotice("실행 취소할 작업이 없습니다.");
+            return;
+        }
+
+        ShowNotice(result.Value.Succeeded
+            ? $"실행 취소: {result.Value.Description}"
+            : $"실행 취소하지 못했습니다: {result.Value.Description} (항목이 바뀌었거나 휴지통에 없습니다)");
+
+        if (IsCompareMode)
+        {
+            await Compare.RunAsync(clearCache: true, keepSelection: true);
+        }
+        else
+        {
+            await ActiveTab.RefreshAsync();
+            if (IsRightPaneVisible) await OtherPane.ActiveTab.RefreshAsync();
+        }
     }
 
     private bool HandleShellVerb(string verb)

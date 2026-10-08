@@ -14,6 +14,9 @@ public interface IFileOperations
 
     Task<bool> RenameAsync(string path, string newName);
 
+    /// <summary>휴지통으로 보낸 항목을 원래 위치로 복원 (실행 취소용). 복원한 경로 목록 반환.</summary>
+    Task<IReadOnlyList<string>> RestoreFromRecycleBinAsync(IReadOnlyList<string> originalPaths);
+
     /// <summary>"새 폴더" 생성 후 경로 반환.</summary>
     string CreateFolder(string parentDirectory);
 

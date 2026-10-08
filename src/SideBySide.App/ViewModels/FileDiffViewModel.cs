@@ -85,6 +85,14 @@ public sealed partial class FileDiffViewModel : ObservableObject
     [ObservableProperty]
     private bool _rightDirty;
 
+    /// <summary>가장 긴 줄의 글자 수 (탭은 4칸으로 계산) — 가로 스크롤 범위.</summary>
+    [ObservableProperty]
+    private int _maxLineLength;
+
+    /// <summary>좌우 공용 가로 스크롤 위치 (픽셀).</summary>
+    [ObservableProperty]
+    private double _horizontalOffset;
+
     private FileDiffViewModel(string leftPath, string rightPath, DiffOptions options, IDialogService dialogs, Action<DiffOptions> saveOptions)
     {
         LeftPath = leftPath;
@@ -297,6 +305,7 @@ public sealed partial class FileDiffViewModel : ObservableObject
         var selectedRow = SelectedLine?.Row ?? 0;
         var result = _document.Result;
         Lines.ReplaceAll(result.Lines.Select((l, i) => new DiffLineViewModel(l, i)));
+        MaxLineLength = Math.Max(MaxLength(_document.Left), MaxLength(_document.Right));
         SelectedLine = Lines.Count == 0 ? null : Lines[Math.Min(selectedRow, Lines.Count - 1)];
         LeftDirty = _document.LeftDirty;
         RightDirty = _document.RightDirty;
@@ -304,6 +313,23 @@ public sealed partial class FileDiffViewModel : ObservableObject
             ? "같음"
             : $"차이 {result.Hunks.Count}곳";
         OnPropertyChanged(nameof(CanEdit));
+    }
+
+    private static int MaxLength(IReadOnlyList<string> lines)
+    {
+        var max = 0;
+        foreach (var line in lines)
+        {
+            var length = line.Length;
+            foreach (var c in line)
+            {
+                if (c == '\t') length += 3;
+            }
+
+            if (length > max) max = length;
+        }
+
+        return max;
     }
 
     private static string Describe(TextFileContent content)

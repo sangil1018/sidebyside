@@ -84,6 +84,7 @@ public partial class App : Application
         // App
         services.AddSingleton<ThemeManager>();
         services.AddSingleton<IDialogService, DialogService>();
+        services.AddSingleton<UndoService>();
         services.AddSingleton<CommandHost>();
         services.AddSingleton<ExplorerContext>();
         services.AddSingleton<MainViewModel>();

@@ -92,6 +92,7 @@
             <Button Style="{StaticResource Button.Icon}" Content="&#xE77F;" Command="{cmd:Command Paste}" ToolTip="{cmd:Tip Paste}" />
             <Button Style="{StaticResource Button.Icon}" Content="&#xE8AC;" Command="{cmd:Command Rename}" ToolTip="{cmd:Tip Rename}" />
             <Button Style="{StaticResource Button.Icon}" Content="&#xE74D;" Command="{cmd:Command Delete}" ToolTip="{cmd:Tip Delete}" />
+            <Button Style="{StaticResource Button.Icon}" Content="&#xE7A7;" Command="{cmd:Command Undo}" ToolTip="{cmd:Tip Undo}" />
             <Rectangle Width="1" Margin="6,6" Fill="{DynamicResource Brush.Border}" />
             <Button Style="{StaticResource Button.Icon}" Content="&#xE946;" Command="{cmd:Command Properties}" ToolTip="{cmd:Tip Properties}" />
             <Button Style="{StaticResource Button.Icon}" Content="&#xE756;" Command="{cmd:Command OpenTerminal}" ToolTip="{cmd:Tip OpenTerminal}" />
@@ -179,6 +180,14 @@
               </StackPanel>
             </Button>
             <Rectangle Width="1" Margin="6,6" Fill="{DynamicResource Brush.Border}" />
+            <Button x:Name="ViewButton" Style="{StaticResource Button.Ghost}" Click="OnViewMenu" ToolTip="보기 방식 (Ctrl+마우스 휠)"
+                    IsEnabled="{Binding IsCompareMode, Converter={StaticResource InverseBool}}">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE8FD;" Margin="0,0,6,0" />
+                <TextBlock Text="보기" />
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE70D;" FontSize="9" Margin="6,0,0,0" />
+              </StackPanel>
+            </Button>
             <ToggleButton Style="{StaticResource Button.Ghost}" Content="탐색 창" IsChecked="{Binding ShowSidebar}" ToolTip="{cmd:Tip ToggleSidebar}"
                           IsEnabled="{Binding IsCompareMode, Converter={StaticResource InverseBool}}" />
             <ToggleButton Style="{StaticResource Button.Ghost}" Content="두 창" IsChecked="{Binding IsDualPane}" ToolTip="{cmd:Tip ToggleDualPane}"
@@ -225,6 +234,8 @@
             <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding StatusText}" />
             <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding SelectionText}" Margin="16,0,0,0" />
             <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding HiddenText}" Margin="16,0,0,0" />
+            <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding Notice}" Margin="16,0,0,0"
+                       Foreground="{DynamicResource Brush.Accent}" />
           </StackPanel>
         </DockPanel>
       </Border>

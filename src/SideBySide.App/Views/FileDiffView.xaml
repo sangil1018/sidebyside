@@ -107,7 +107,11 @@
 
     <!-- ── 본문 ───────────────────────────────────────────────── -->
     <Grid Grid.Row="2">
-      <ListBox x:Name="Lines" ItemsSource="{Binding Lines}" SelectedItem="{Binding SelectedLine}"
+      <Grid.RowDefinitions>
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+      <ListBox x:Name="Lines" PreviewMouseWheel="OnLinesMouseWheel" SizeChanged="OnLinesSizeChanged" ItemsSource="{Binding Lines}" SelectedItem="{Binding SelectedLine}"
                ItemContainerStyle="{StaticResource ListBoxItem.DiffLine}"
                Background="{DynamicResource Brush.SurfaceBg}" Foreground="{DynamicResource Brush.Text}" BorderThickness="0"
                FontFamily="{StaticResource Font.Mono}" FontSize="12.5"
@@ -144,7 +148,10 @@
                   </Grid.ColumnDefinitions>
                   <Rectangle x:Name="LeftMark" Width="2" HorizontalAlignment="Left" Fill="Transparent" />
                   <TextBlock Style="{StaticResource LineNumber}" Text="{Binding LeftNumber}" />
-                  <TextBlock Grid.Column="1" Style="{StaticResource LineText}" infra:DiffText.Left="{Binding}" />
+                  <Canvas Grid.Column="1" ClipToBounds="True">
+                    <TextBlock Style="{StaticResource LineText}" Canvas.Top="2" infra:DiffText.Left="{Binding}"
+                               Canvas.Left="{Binding DataContext.HorizontalOffset, RelativeSource={RelativeSource AncestorType=ListBox}, Converter={StaticResource Negate}}" />
+                  </Canvas>
                 </Grid>
               </Border>
               <Rectangle Grid.Column="1" Fill="{DynamicResource Brush.Border}" />
@@ -156,7 +163,10 @@
                   </Grid.ColumnDefinitions>
                   <Rectangle x:Name="RightMark" Width="2" HorizontalAlignment="Left" Fill="Transparent" />
                   <TextBlock Style="{StaticResource LineNumber}" Text="{Binding RightNumber}" />
-                  <TextBlock Grid.Column="1" Style="{StaticResource LineText}" infra:DiffText.Right="{Binding}" />
+                  <Canvas Grid.Column="1" ClipToBounds="True">
+                    <TextBlock Style="{StaticResource LineText}" Canvas.Top="2" infra:DiffText.Right="{Binding}"
+                               Canvas.Left="{Binding DataContext.HorizontalOffset, RelativeSource={RelativeSource AncestorType=ListBox}, Converter={StaticResource Negate}}" />
+                  </Canvas>
                 </Grid>
               </Border>
             </Grid>
@@ -182,8 +192,12 @@
         </ListBox.ItemTemplate>
       </ListBox>
 
+      <!-- 긴 줄 가로 스크롤 (좌우 공용, Shift+휠) -->
+      <ScrollBar x:Name="HScroll" Grid.Row="1" Orientation="Horizontal" Visibility="Collapsed"
+                 Value="{Binding HorizontalOffset, Mode=TwoWay}" />
+
       <!-- 편집 모드 -->
-      <Grid Visibility="{Binding IsEditing, Converter={StaticResource BoolToVis}}">
+      <Grid Grid.RowSpan="2" Visibility="{Binding IsEditing, Converter={StaticResource BoolToVis}}">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="1" />
@@ -194,7 +208,7 @@
         <TextBox Grid.Column="2" Style="{StaticResource TextBox.Editor}" Text="{Binding RightText, UpdateSourceTrigger=PropertyChanged}" />
       </Grid>
 
-      <TextBlock Text="{Binding Message}" Style="{StaticResource Text.Secondary}" FontSize="{StaticResource FontSize.Body}"
+      <TextBlock Grid.RowSpan="2" Text="{Binding Message}" Style="{StaticResource Text.Secondary}" FontSize="{StaticResource FontSize.Body}"
                  HorizontalAlignment="Center" VerticalAlignment="Top" Margin="24,48,24,0" TextWrapping="Wrap"
                  Visibility="{Binding Message, Converter={StaticResource NullToVis}}" />
     </Grid>

@@ -185,6 +185,68 @@ internal static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetClientRect(IntPtr hwnd, out RECT lpRect);
 
+    // ── 썸네일 (IShellItemImageFactory) ─────────────────────────────
+    public const uint SIIGBF_RESIZETOFIT = 0x0;
+    public const uint SIIGBF_BIGGERSIZEOK = 0x1;
+    public const uint SIIGBF_ICONONLY = 0x4;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SIZE
+    {
+        public int cx;
+        public int cy;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct BITMAP
+    {
+        public int bmType;
+        public int bmWidth;
+        public int bmHeight;
+        public int bmWidthBytes;
+        public ushort bmPlanes;
+        public ushort bmBitsPixel;
+        public IntPtr bmBits;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct BITMAPINFOHEADER
+    {
+        public uint biSize;
+        public int biWidth;
+        public int biHeight;
+        public ushort biPlanes;
+        public ushort biBitCount;
+        public uint biCompression;
+        public uint biSizeImage;
+        public int biXPelsPerMeter;
+        public int biYPelsPerMeter;
+        public uint biClrUsed;
+        public uint biClrImportant;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct DIBSECTION
+    {
+        public BITMAP dsBm;
+        public BITMAPINFOHEADER dsBmih;
+        public uint dsBitfields0;
+        public uint dsBitfields1;
+        public uint dsBitfields2;
+        public IntPtr dshSection;
+        public uint dsOffset;
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    public static extern int SHCreateItemFromParsingName(string pszPath, IntPtr pbc, ref Guid riid, out IntPtr ppv);
+
+    [DllImport("gdi32.dll")]
+    public static extern int GetObject(IntPtr hgdiobj, int cbBuffer, out DIBSECTION lpvObject);
+
+    [DllImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool DeleteObject(IntPtr hObject);
+
     // ── DWM ──────────────────────────────────────────────────────────
     public const int DWMWA_USE_IMMERSIVE_DARK_MODE_OLD = 19;
     public const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;

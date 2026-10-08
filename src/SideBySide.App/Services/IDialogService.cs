@@ -1,4 +1,5 @@
 using SideBySide.Core.Filtering;
+using SideBySide.Core.Rename;
 using SideBySide.Core.Sessions;
 
 namespace SideBySide.App.Services;
@@ -18,8 +19,8 @@ public interface IDialogService
     /// <summary>필터 편집. 프리셋 목록은 대화상자 안에서 수정될 수 있다.</summary>
     FilterSettings? EditFilter(FilterSettings current, IList<FilterSettings> presets);
 
-    /// <summary>다중 이름 바꾸기. 적용했으면 true.</summary>
-    bool BatchRename(IReadOnlyList<string> paths);
+    /// <summary>다중 이름 바꾸기. 적용한 항목 목록(실행 취소용), 취소했으면 null.</summary>
+    IReadOnlyList<RenamePreview>? BatchRename(IReadOnlyList<string> paths);
 
     /// <summary>세션 선택. 목록은 대화상자 안에서 삭제될 수 있다.</summary>
     CompareSession? PickSession(IList<CompareSession> sessions);

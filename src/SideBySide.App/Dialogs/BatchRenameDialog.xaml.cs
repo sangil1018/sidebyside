@@ -17,6 +17,9 @@ public partial class BatchRenameDialog : Window
         Loaded += (_, _) => FindBox.Focus();
     }
 
+    /// <summary>실제로 바꾼 항목 (실행 취소용).</summary>
+    public IReadOnlyList<RenamePreview> Applied { get; private set; } = [];
+
     private void OnChanged(object sender, RoutedEventArgs e) => UpdatePreview();
 
     private void UpdatePreview()
@@ -46,6 +49,7 @@ public partial class BatchRenameDialog : Window
         try
         {
             BatchRenamer.Apply(_preview);
+            Applied = _preview.Where(p => p.IsChanged).ToList();
             DialogResult = true;
         }
         catch (BatchRenameException ex)

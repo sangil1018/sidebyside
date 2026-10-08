@@ -46,4 +46,46 @@ public static class DirectoryLoader
 
     public static Task<List<FileEntry>> LoadAsync(string path, CancellationToken ct = default)
         => Task.Run(() => Load(path, ct), ct);
+
+    /// <summary>
+    /// 하위 폴더까지 재귀 검색. <paramref name="recurseInto"/>가 false인 폴더(필터로 제외된 폴더 등)는 들어가지 않고,
+    /// 심볼릭 링크/정션은 순환을 막기 위해 따라가지 않는다. 결과는 찾는 대로 스트리밍된다.
+    /// </summary>
+    public static IEnumerable<FileEntry> Search(
+        string root,
+        Func<string, bool, FileAttributes, bool> include,
+        Func<string, FileAttributes, bool> recurseInto,
+        CancellationToken ct = default)
+    {
+        var options = new EnumerationOptions
+        {
+            IgnoreInaccessible = true,
+            AttributesToSkip = 0,
+            RecurseSubdirectories = true,
+            ReturnSpecialDirectories = false,
+            BufferSize = 64 * 1024,
+        };
+
+        var enumerable = new FileSystemEnumerable<FileEntry>(
+            root,
+            (ref FileSystemEntry e) => new FileEntry(
+                e.FileName.ToString(),
+                e.ToFullPath(),
+                e.IsDirectory,
+                e.IsDirectory ? 0 : e.Length,
+                e.LastWriteTimeUtc.UtcDateTime,
+                e.Attributes),
+            options)
+        {
+            ShouldIncludePredicate = (ref FileSystemEntry e) => include(e.FileName.ToString(), e.IsDirectory, e.Attributes),
+            ShouldRecursePredicate = (ref FileSystemEntry e) =>
+                (e.Attributes & FileAttributes.ReparsePoint) == 0 && recurseInto(e.FileName.ToString(), e.Attributes),
+        };
+
+        foreach (var entry in enumerable)
+        {
+            ct.ThrowIfCancellationRequested();
+            yield return entry;
+        }
+    }
 }

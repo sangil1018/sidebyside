@@ -21,6 +21,7 @@
   <infra:InverseBoolConverter x:Key="InverseBool" />
   <infra:EnumEqualsConverter x:Key="EnumEquals" />
   <infra:RatioToWidthConverter x:Key="RatioToWidth" />
+  <infra:NegateConverter x:Key="Negate" />
 
   <!-- 아이콘 글리프 텍스트 -->
   <Style x:Key="Glyph" TargetType="TextBlock">

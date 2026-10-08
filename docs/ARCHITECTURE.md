@@ -25,6 +25,10 @@ SideBySide.App  (WPF, MVVM)        ──▶  SideBySide.Shell (Win32/COM)  ─�
 - `FileItemViewModel` — 행. 아이콘/형식 이름은 화면에 보일 때 지연 요청
 - `ExplorerContext` — 모든 탭이 공유하는 필터·잘라내기 상태와 셸 서비스
 
+- 보기 방식: `FilePane.ApplyView`가 `GridView`(자세히) ↔ `VirtualizingWrapPanel` + 타일 템플릿(아이콘)을 교체. 같은 ListView라 선택·드래그·이름 바꾸기 코드는 공통
+- 하위 폴더 검색: `TabViewModel.RunRecursiveSearchAsync` → `DirectoryLoader.Search`(필터로 제외된 폴더는 들어가지 않음, 링크는 따라가지 않음)를 백그라운드에서 돌리고 150ms마다 결과를 목록에 추가
+- 실행 취소: `UndoService` 스택. `MainViewModel`이 작업마다 되돌리기 동작을 기록. 복사/이동은 작업 전후 대상 폴더 목록을 비교해 새로 생긴 항목만 대상으로 함. 휴지통 복원은 `RecycleBinStore`가 `$Recycle.Bin\<SID>`의 `$I` 메타데이터를 읽어 `$R` 파일을 원래 위치로 이동
+
 ### 비교 모드
 - `CompareViewModel.Enter(left, right)` — 두 탭의 `NavigationInterceptor`를 설정해 탐색을 가로챔 (한쪽 이동 → 반대쪽도 같은 상대 경로로)
 - `FolderComparer.CompareLevelAsync` — 현재 폴더 한 단계 열거·병합·파일 판정 (빠름) → 화면 표시
@@ -35,7 +39,7 @@ SideBySide.App  (WPF, MVVM)        ──▶  SideBySide.Shell (Win32/COM)  ─�
 - `TextFileCodec` — BOM → 엄격 UTF-8 → 시스템 ANSI 순 인코딩 판별, 줄끝·BOM 보존 저장(임시 파일 후 교체)
 - `TextDiff` / `Myers` — 선형 메모리 Myers 차이(라인) + 글자 단위 강조
 - `DiffDocument` — 블록 적용, 전체 텍스트 교체, 실행 취소 스택
-- `FileDiffViewModel` / `FileDiffView` — 가상화 ListBox, `DiffText` 첨부 속성이 강조 Run 생성
+- `FileDiffViewModel` / `FileDiffView` — 가상화 ListBox, `DiffText` 첨부 속성이 강조 Run 생성. 긴 줄은 텍스트를 Canvas에 넣고 공용 `HorizontalOffset`만큼 옮겨 좌우가 함께 가로 스크롤
 
 ## 확장 방법
 
@@ -66,6 +70,8 @@ SideBySide.App  (WPF, MVVM)        ──▶  SideBySide.Shell (Win32/COM)  ─�
 | 디렉터리 열거, 필터·정렬, 뷰모델 생성 | 스레드 풀 (`Task.Run`) |
 | 폴더/파일 비교 | `Parallel.ForEachAsync` (코어 수) |
 | 아이콘 추출 | 전용 STA 스레드 1개 (`ShellIconProvider`) |
+| 썸네일(큰 아이콘) | 전용 STA 스레드 2개, 최근 요청 우선 |
+| 하위 폴더 검색 | 스레드 풀 (`Task.Run`), UI는 150ms마다 결과 반영 |
 | 셸 파일 작업 (SHFileOperation) | 작업마다 STA 스레드 |
 | 미리보기 처리기, 우클릭 메뉴, 클립보드 | UI 스레드 (COM STA 요구) |
 
