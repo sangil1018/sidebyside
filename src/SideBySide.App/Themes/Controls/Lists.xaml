@@ -1,0 +1,196 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- ── 파일 목록 (ListView + GridView) ───────────────────────────── -->
+
+  <Style TargetType="GridViewColumnHeader">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Padding" Value="10,6" />
+    <Setter Property="FontSize" Value="{StaticResource FontSize.Small}" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="GridViewColumnHeader">
+          <Grid>
+            <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{DynamicResource Brush.Border}"
+                    BorderThickness="0,0,0,1">
+              <ContentPresenter Margin="{TemplateBinding Padding}" RecognizesAccessKey="True"
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
+            </Border>
+            <Thumb x:Name="PART_HeaderGripper" HorizontalAlignment="Right" Width="9" Margin="0,0,-4,0" Cursor="SizeWE">
+              <Thumb.Template>
+                <ControlTemplate TargetType="Thumb">
+                  <Grid Background="Transparent">
+                    <Rectangle Width="1" Margin="0,6" Fill="{DynamicResource Brush.Border}" HorizontalAlignment="Center" />
+                  </Grid>
+                </ControlTemplate>
+              </Thumb.Template>
+            </Thumb>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.Hover}" />
+            </Trigger>
+            <Trigger Property="Role" Value="Padding">
+              <Setter TargetName="PART_HeaderGripper" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!--
+    파일 행. 비교 상태는 옅은 배경 + 왼쪽 2px 표시 막대로 나타낸다.
+    트리거 순서가 우선순위: 비교 상태 → 빈 자리 → 마우스 오버 → 선택.
+  -->
+  <Style x:Key="ListViewItem.File" TargetType="ListViewItem">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListViewItem">
+          <Border x:Name="Bd" Background="{TemplateBinding Background}" Height="{StaticResource RowHeight}"
+                  SnapsToDevicePixels="True">
+            <Grid>
+              <GridViewRowPresenter VerticalAlignment="Center" Columns="{TemplateBinding GridView.ColumnCollection}"
+                                    Content="{TemplateBinding Content}" />
+              <Rectangle x:Name="Mark" Width="2" HorizontalAlignment="Left" Fill="Transparent" />
+            </Grid>
+          </Border>
+          <ControlTemplate.Triggers>
+            <DataTrigger Binding="{Binding CompareState}" Value="Different">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.DiffChanged}" />
+              <Setter TargetName="Mark" Property="Fill" Value="{DynamicResource Brush.DiffChangedMark}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CompareState}" Value="Error">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.DiffChanged}" />
+              <Setter TargetName="Mark" Property="Fill" Value="{DynamicResource Brush.DiffError}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CompareState}" Value="LeftOnly">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.DiffLeft}" />
+              <Setter TargetName="Mark" Property="Fill" Value="{DynamicResource Brush.DiffLeftMark}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CompareState}" Value="RightOnly">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.DiffRight}" />
+              <Setter TargetName="Mark" Property="Fill" Value="{DynamicResource Brush.DiffRightMark}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsPlaceholder}" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.DiffPlaceholder}" />
+              <Setter TargetName="Mark" Property="Fill" Value="Transparent" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsHidden}" Value="True">
+              <Setter Property="Opacity" Value="0.6" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsCut}" Value="True">
+              <Setter Property="Opacity" Value="0.45" />
+            </DataTrigger>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.Hover}" />
+            </Trigger>
+            <MultiTrigger>
+              <MultiTrigger.Conditions>
+                <Condition Property="IsSelected" Value="True" />
+                <Condition Property="Selector.IsSelectionActive" Value="False" />
+              </MultiTrigger.Conditions>
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.SelectedInactive}" />
+            </MultiTrigger>
+            <MultiTrigger>
+              <MultiTrigger.Conditions>
+                <Condition Property="IsSelected" Value="True" />
+                <Condition Property="Selector.IsSelectionActive" Value="True" />
+              </MultiTrigger.Conditions>
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.Selected}" />
+            </MultiTrigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="ListView.Files" TargetType="ListView">
+    <Setter Property="Background" Value="{DynamicResource Brush.SurfaceBg}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="SelectionMode" Value="Extended" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="ItemContainerStyle" Value="{StaticResource ListViewItem.File}" />
+    <!-- 성능: 화면에 보이는 행만 만들고 재활용 -->
+    <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
+    <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
+    <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel" />
+    <Setter Property="VirtualizingPanel.CacheLengthUnit" Value="Page" />
+    <Setter Property="VirtualizingPanel.CacheLength" Value="1" />
+    <Setter Property="ScrollViewer.IsDeferredScrollingEnabled" Value="False" />
+    <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+  </Style>
+
+  <!-- ── 탐색 창 항목 ─────────────────────────────────────────────── -->
+
+  <Style x:Key="ListBoxItem.Nav" TargetType="ListBoxItem">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+    <Setter Property="Padding" Value="10,5" />
+    <Setter Property="Margin" Value="6,0" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListBoxItem">
+          <Border x:Name="Bd" Background="Transparent" CornerRadius="{StaticResource Radius}" Padding="{TemplateBinding Padding}">
+            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.Hover}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="ListBox.Plain" TargetType="ListBox">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+    <Setter Property="ItemContainerStyle" Value="{StaticResource ListBoxItem.Nav}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListBox">
+          <ItemsPresenter />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ── 파일 비교 줄 ─────────────────────────────────────────────── -->
+
+  <Style x:Key="ListBoxItem.DiffLine" TargetType="ListBoxItem">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListBoxItem">
+          <Grid>
+            <ContentPresenter />
+            <Border x:Name="Sel" BorderThickness="0,1" BorderBrush="Transparent" IsHitTestVisible="False" />
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+              <Setter TargetName="Sel" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+</ResourceDictionary>

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Windows 셸(Win32/COM) 연동만 담당. 앱은 Abstractions 인터페이스로만 사용한다. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>SideBySide.Shell</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SideBySide.Core\SideBySide.Core.csproj" />
+  </ItemGroup>
+
+</Project>

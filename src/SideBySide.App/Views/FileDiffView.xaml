@@ -1,0 +1,202 @@
+<UserControl x:Class="SideBySide.App.Views.FileDiffView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:cmd="clr-namespace:SideBySide.App.Commands"
+             xmlns:vm="clr-namespace:SideBySide.App.ViewModels"
+             xmlns:infra="clr-namespace:SideBySide.App.Infrastructure"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:FileDiffViewModel}">
+  <UserControl.Resources>
+    <Style x:Key="FileHeaderName" TargetType="TextBlock">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style x:Key="LineNumber" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.TextDisabled}" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,10,0" />
+    </Style>
+    <Style x:Key="LineText" TargetType="TextBlock">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextTrimming" Value="None" />
+      <Setter Property="Margin" Value="6,0,4,0" />
+    </Style>
+  </UserControl.Resources>
+
+  <Grid Background="{DynamicResource Brush.SurfaceBg}">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <!-- ── 파일 머리글 ─────────────────────────────────────────── -->
+    <Grid Background="{DynamicResource Brush.WindowBg}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="1" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <StackPanel Margin="14,8" ToolTip="{Binding LeftPath}">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Style="{StaticResource FileHeaderName}" Text="{Binding LeftName}" />
+          <TextBlock Text=" ●" Foreground="{DynamicResource Brush.DiffChangedMark}" ToolTip="저장 안 됨"
+                     Visibility="{Binding LeftDirty, Converter={StaticResource BoolToVis}}" />
+        </StackPanel>
+        <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding LeftInfo}" />
+      </StackPanel>
+      <Rectangle Grid.Column="1" Fill="{DynamicResource Brush.Border}" />
+      <StackPanel Grid.Column="2" Margin="14,8" ToolTip="{Binding RightPath}">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Style="{StaticResource FileHeaderName}" Text="{Binding RightName}" />
+          <TextBlock Text=" ●" Foreground="{DynamicResource Brush.DiffChangedMark}" ToolTip="저장 안 됨"
+                     Visibility="{Binding RightDirty, Converter={StaticResource BoolToVis}}" />
+        </StackPanel>
+        <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding RightInfo}" />
+      </StackPanel>
+    </Grid>
+
+    <!-- ── 도구 모음 ───────────────────────────────────────────── -->
+    <Border Grid.Row="1" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1" Padding="8,3"
+            Background="{DynamicResource Brush.WindowBg}">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Style="{StaticResource Button.Icon}" Content="&#xE711;"
+                Command="{cmd:Command DiffClose}" ToolTip="{cmd:Tip DiffClose}" />
+        <TextBlock DockPanel.Dock="Right" Style="{StaticResource Text.Secondary}" Text="{Binding Summary}" Margin="0,0,12,0" />
+        <StackPanel Orientation="Horizontal" IsEnabled="{Binding CanEdit}">
+          <Button Style="{StaticResource Button.Icon}" Content="&#xE74A;" Command="{cmd:Command DiffPrev}" ToolTip="{cmd:Tip DiffPrev}" />
+          <Button Style="{StaticResource Button.Icon}" Content="&#xE74B;" Command="{cmd:Command DiffNext}" ToolTip="{cmd:Tip DiffNext}" />
+          <Rectangle Width="1" Margin="6,6" Fill="{DynamicResource Brush.Border}" />
+          <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command DiffApplyToLeft}" ToolTip="{cmd:Tip DiffApplyToLeft}">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Style="{StaticResource Glyph}" Text="&#xE72B;" FontSize="12" Margin="0,0,6,0" />
+              <TextBlock Text="왼쪽에 적용" />
+            </StackPanel>
+          </Button>
+          <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command DiffApplyToRight}" ToolTip="{cmd:Tip DiffApplyToRight}">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="오른쪽에 적용" Margin="0,0,6,0" />
+              <TextBlock Style="{StaticResource Glyph}" Text="&#xE72A;" FontSize="12" />
+            </StackPanel>
+          </Button>
+          <Button Style="{StaticResource Button.Icon}" Content="&#xE7A7;" Command="{cmd:Command DiffUndo}" ToolTip="{cmd:Tip DiffUndo}" />
+          <Rectangle Width="1" Margin="6,6" Fill="{DynamicResource Brush.Border}" />
+          <ToggleButton Style="{StaticResource Button.Ghost}" IsChecked="{Binding IsEditing, Mode=OneWay}"
+                        Command="{cmd:Command DiffToggleEdit}" ToolTip="{cmd:Tip DiffToggleEdit}">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Style="{StaticResource Glyph}" Text="&#xE70F;" Margin="0,0,6,0" />
+              <TextBlock Text="편집" />
+            </StackPanel>
+          </ToggleButton>
+          <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command DiffSave}" ToolTip="{cmd:Tip DiffSave}">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Style="{StaticResource Glyph}" Text="&#xE74E;" Margin="0,0,6,0" />
+              <TextBlock Text="저장" />
+            </StackPanel>
+          </Button>
+          <Rectangle Width="1" Margin="6,6" Fill="{DynamicResource Brush.Border}" />
+          <CheckBox Content="공백 무시" IsChecked="{Binding IgnoreWhitespace}" Margin="6,0,12,0" />
+          <CheckBox Content="대소문자 무시" IsChecked="{Binding IgnoreCase}" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- ── 본문 ───────────────────────────────────────────────── -->
+    <Grid Grid.Row="2">
+      <ListBox x:Name="Lines" ItemsSource="{Binding Lines}" SelectedItem="{Binding SelectedLine}"
+               ItemContainerStyle="{StaticResource ListBoxItem.DiffLine}"
+               Background="{DynamicResource Brush.SurfaceBg}" Foreground="{DynamicResource Brush.Text}" BorderThickness="0"
+               FontFamily="{StaticResource Font.Mono}" FontSize="12.5"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+               VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+               VirtualizingPanel.ScrollUnit="Item" FocusVisualStyle="{x:Null}">
+        <ListBox.Style>
+          <Style TargetType="ListBox">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+              <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                  <Condition Binding="{Binding IsText}" Value="True" />
+                  <Condition Binding="{Binding IsEditing}" Value="False" />
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Visibility" Value="Visible" />
+              </MultiDataTrigger>
+            </Style.Triggers>
+          </Style>
+        </ListBox.Style>
+        <ListBox.ItemTemplate>
+          <DataTemplate DataType="{x:Type vm:DiffLineViewModel}">
+            <Grid Height="20">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="1" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <Border x:Name="LeftCell" Background="Transparent">
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="52" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <Rectangle x:Name="LeftMark" Width="2" HorizontalAlignment="Left" Fill="Transparent" />
+                  <TextBlock Style="{StaticResource LineNumber}" Text="{Binding LeftNumber}" />
+                  <TextBlock Grid.Column="1" Style="{StaticResource LineText}" infra:DiffText.Left="{Binding}" />
+                </Grid>
+              </Border>
+              <Rectangle Grid.Column="1" Fill="{DynamicResource Brush.Border}" />
+              <Border x:Name="RightCell" Grid.Column="2" Background="Transparent">
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="52" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <Rectangle x:Name="RightMark" Width="2" HorizontalAlignment="Left" Fill="Transparent" />
+                  <TextBlock Style="{StaticResource LineNumber}" Text="{Binding RightNumber}" />
+                  <TextBlock Grid.Column="1" Style="{StaticResource LineText}" infra:DiffText.Right="{Binding}" />
+                </Grid>
+              </Border>
+            </Grid>
+            <DataTemplate.Triggers>
+              <DataTrigger Binding="{Binding Kind}" Value="Changed">
+                <Setter TargetName="LeftCell" Property="Background" Value="{DynamicResource Brush.DiffChanged}" />
+                <Setter TargetName="RightCell" Property="Background" Value="{DynamicResource Brush.DiffChanged}" />
+                <Setter TargetName="LeftMark" Property="Fill" Value="{DynamicResource Brush.DiffChangedMark}" />
+                <Setter TargetName="RightMark" Property="Fill" Value="{DynamicResource Brush.DiffChangedMark}" />
+              </DataTrigger>
+              <DataTrigger Binding="{Binding Kind}" Value="LeftOnly">
+                <Setter TargetName="LeftCell" Property="Background" Value="{DynamicResource Brush.DiffLeft}" />
+                <Setter TargetName="LeftMark" Property="Fill" Value="{DynamicResource Brush.DiffLeftMark}" />
+                <Setter TargetName="RightCell" Property="Background" Value="{DynamicResource Brush.DiffPlaceholder}" />
+              </DataTrigger>
+              <DataTrigger Binding="{Binding Kind}" Value="RightOnly">
+                <Setter TargetName="RightCell" Property="Background" Value="{DynamicResource Brush.DiffRight}" />
+                <Setter TargetName="RightMark" Property="Fill" Value="{DynamicResource Brush.DiffRightMark}" />
+                <Setter TargetName="LeftCell" Property="Background" Value="{DynamicResource Brush.DiffPlaceholder}" />
+              </DataTrigger>
+            </DataTemplate.Triggers>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <!-- 편집 모드 -->
+      <Grid Visibility="{Binding IsEditing, Converter={StaticResource BoolToVis}}">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="1" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <TextBox x:Name="LeftEditor" Style="{StaticResource TextBox.Editor}" Text="{Binding LeftText, UpdateSourceTrigger=PropertyChanged}" />
+        <Rectangle Grid.Column="1" Fill="{DynamicResource Brush.Border}" />
+        <TextBox Grid.Column="2" Style="{StaticResource TextBox.Editor}" Text="{Binding RightText, UpdateSourceTrigger=PropertyChanged}" />
+      </Grid>
+
+      <TextBlock Text="{Binding Message}" Style="{StaticResource Text.Secondary}" FontSize="{StaticResource FontSize.Body}"
+                 HorizontalAlignment="Center" VerticalAlignment="Top" Margin="24,48,24,0" TextWrapping="Wrap"
+                 Visibility="{Binding Message, Converter={StaticResource NullToVis}}" />
+    </Grid>
+  </Grid>
+</UserControl>
