@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- UI·Win32에 의존하지 않는 순수 로직. 어떤 OS에서도 빌드/테스트 가능해야 함. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>SideBySide.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SideBySide.Core.Tests" />
+  </ItemGroup>
+
+</Project>
