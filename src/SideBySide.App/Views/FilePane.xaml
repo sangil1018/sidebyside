@@ -212,6 +212,7 @@
                           SelectionChanged="OnSelectionChanged"
                           PreviewMouseLeftButtonDown="OnListMouseDown"
                           PreviewMouseLeftButtonUp="OnListMouseUp"
+                          LostMouseCapture="OnListLostMouseCapture"
                           PreviewMouseMove="OnListMouseMove"
                           PreviewMouseRightButtonDown="OnListRightMouseDown"
                           MouseRightButtonUp="OnListRightMouseUp"
@@ -240,9 +241,11 @@
                       <ColumnDefinition Width="*" />
                       <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
+                    <!-- Tag="DragHandle": 이름(아이콘·글자) 위에서 끌면 파일 끌어서 놓기, 그 밖에서 끌면 영역 선택 -->
                     <Image Source="{Binding Icon}" Width="16" Height="16" Margin="2,0,8,0" VerticalAlignment="Center"
-                           RenderOptions.BitmapScalingMode="HighQuality" />
+                           RenderOptions.BitmapScalingMode="HighQuality" Tag="DragHandle" />
                     <TextBlock Grid.Column="1" Text="{Binding Label}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                               HorizontalAlignment="Left" Tag="DragHandle"
                                Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisInv}}" />
                     <TextBox Grid.Column="1" Padding="3,1" Margin="-4,0,0,0"
                              Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}"
@@ -304,6 +307,12 @@
           </GridView>
         </ListView.View>
       </views:FileListView>
+
+      <!-- 마우스 끌기 영역 선택 사각형 -->
+      <Canvas IsHitTestVisible="False" ClipToBounds="True">
+        <Rectangle x:Name="Marquee" Visibility="Collapsed" Stroke="{DynamicResource Brush.Accent}" StrokeThickness="1"
+                   Fill="{DynamicResource Brush.AccentSubtle}" Opacity="0.7" />
+      </Canvas>
 
       <!-- 로딩 표시 (상단 얇은 선) -->
       <Rectangle Height="2" VerticalAlignment="Top" Fill="{DynamicResource Brush.Accent}" Opacity="0.7" IsHitTestVisible="False"

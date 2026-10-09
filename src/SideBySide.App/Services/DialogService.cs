@@ -1,5 +1,6 @@
 using System.Windows;
 using SideBySide.App.Dialogs;
+using SideBySide.Core.FileSystem;
 using SideBySide.Core.Filtering;
 using SideBySide.Core.Rename;
 using SideBySide.Core.Sessions;
@@ -28,6 +29,12 @@ public sealed class DialogService(ThemeManager theme) : IDialogService
     {
         var dialog = Prepare(new InputDialog(title, label, initialValue));
         return dialog.ShowDialog() == true ? dialog.Value : null;
+    }
+
+    public (ConflictChoice Choice, bool ApplyToAll) ResolveConflict(TransferConflict conflict)
+    {
+        var dialog = Prepare(new ConflictDialog(conflict));
+        return dialog.ShowDialog() == true ? (dialog.Choice, dialog.ApplyToAll) : (ConflictChoice.Cancel, false);
     }
 
     public FilterSettings? EditFilter(FilterSettings current, IList<FilterSettings> presets)

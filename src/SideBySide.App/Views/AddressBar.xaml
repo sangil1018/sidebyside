@@ -6,6 +6,16 @@
   <Border x:Name="Frame" Background="{DynamicResource Brush.InputBg}" BorderBrush="{DynamicResource Brush.BorderStrong}"
           BorderThickness="1" CornerRadius="{StaticResource Radius}" MouseLeftButtonDown="OnFrameMouseDown" Cursor="IBeam">
     <Grid>
+      <!-- 이 폴더로 진행 중인 복사/이동 진행률 (Windows 7 탐색기처럼 배경을 채움) -->
+      <Border HorizontalAlignment="Left" CornerRadius="3" Background="{DynamicResource Brush.AccentSubtle}"
+              Visibility="{Binding HasOperation, Converter={StaticResource BoolToVis}}">
+        <Border.Width>
+          <MultiBinding Converter="{StaticResource RatioToWidth}">
+            <Binding Path="OperationProgress" />
+            <Binding Path="ActualWidth" ElementName="Frame" />
+          </MultiBinding>
+        </Border.Width>
+      </Border>
       <ScrollViewer x:Name="CrumbScroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
                     Focusable="False" Cursor="Arrow" HorizontalAlignment="Left">
         <ItemsControl x:Name="Crumbs" Margin="2,0">

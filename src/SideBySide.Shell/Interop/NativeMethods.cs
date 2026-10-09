@@ -34,11 +34,9 @@ internal static class NativeMethods
     public static extern bool DestroyIcon(IntPtr hIcon);
 
     // ── SHFileOperation ──────────────────────────────────────────────
-    public const uint FO_MOVE = 1;
-    public const uint FO_COPY = 2;
     public const uint FO_DELETE = 3;
     public const uint FO_RENAME = 4;
-    public const ushort FOF_RENAMEONCOLLISION = 0x8;
+    public const ushort FOF_SILENT = 0x4;
     public const ushort FOF_NOCONFIRMATION = 0x10;
     public const ushort FOF_ALLOWUNDO = 0x40;
     public const ushort FOF_WANTNUKEWARNING = 0x4000;
@@ -184,6 +182,19 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetClientRect(IntPtr hwnd, out RECT lpRect);
+
+    // ── 장치 (USB 판별) ──────────────────────────────────────────────
+    public const uint IOCTL_STORAGE_QUERY_PROPERTY = 0x002D1400;
+    public const int BusTypeUsb = 7;
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern Microsoft.Win32.SafeHandles.SafeFileHandle CreateFile(string lpFileName, uint dwDesiredAccess, uint dwShareMode,
+        IntPtr lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, IntPtr hTemplateFile);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool DeviceIoControl(Microsoft.Win32.SafeHandles.SafeFileHandle hDevice, uint dwIoControlCode,
+        byte[] lpInBuffer, int nInBufferSize, byte[] lpOutBuffer, int nOutBufferSize, out int lpBytesReturned, IntPtr lpOverlapped);
 
     // ── 썸네일 (IShellItemImageFactory) ─────────────────────────────
     public const uint SIIGBF_RESIZETOFIT = 0x0;

@@ -23,6 +23,7 @@ public sealed partial class CompareViewModel : ObservableObject
     private CancellationTokenSource? _cts;
     private IReadOnlyList<CompareRow> _rows = [];
     private bool _syncingSelection;
+    private bool _comparing;
 
     [ObservableProperty]
     private bool _isActive;
@@ -111,6 +112,7 @@ public sealed partial class CompareViewModel : ObservableObject
         }
 
         _left = _right = null;
+        _comparing = false;
         _rows = [];
         _vmByRow.Clear();
         IsActive = false;
@@ -136,9 +138,15 @@ public sealed partial class CompareViewModel : ObservableObject
         var rightPath = _right.Path;
         if (leftPath.Length == 0 || rightPath.Length == 0)
         {
+            // 한쪽이 "내 PC"면 비교할 수 없으므로 각 창을 일반 목록으로 보여주고 폴더를 고르게 한다.
+            // 양쪽 모두 폴더가 되면(탐색이 가로채져 RunAsync가 다시 호출됨) 자동으로 비교한다.
+            cts.Cancel();
+            _comparing = false;
             _rows = [];
-            Publish(null);
-            Summary = "양쪽 창에서 비교할 폴더를 여세요.";
+            _vmByRow.Clear();
+            IsRunning = false;
+            Summary = "양쪽 창에서 폴더를 열면 비교합니다.";
+            await Task.WhenAll(_left.LoadAsync(select), _right.LoadAsync(select));
             return;
         }
 
@@ -276,6 +284,7 @@ public sealed partial class CompareViewModel : ObservableObject
     private void Publish(IReadOnlyCollection<string>? select)
     {
         if (_left is null || _right is null) return;
+        _comparing = true;
         _vmByRow.Clear();
         var leftItems = new List<FileItemViewModel>(_rows.Count);
         var rightItems = new List<FileItemViewModel>(_rows.Count);
@@ -367,7 +376,7 @@ public sealed partial class CompareViewModel : ObservableObject
     /// <summary>한쪽 선택을 반대쪽 같은 행에 맞춘다.</summary>
     private void OnSelectionChanged(object? sender, EventArgs e)
     {
-        if (_syncingSelection || sender is not TabViewModel source || _left is null || _right is null) return;
+        if (_syncingSelection || !_comparing || sender is not TabViewModel source || _left is null || _right is null) return;
         var other = ReferenceEquals(source, _left) ? _right : _left;
         List<int> indices;
         if (source.SelectedItems.Count > 32)

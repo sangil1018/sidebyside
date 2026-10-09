@@ -29,11 +29,26 @@ SideBySide.App  (WPF, MVVM)        ──▶  SideBySide.Shell (Win32/COM)  ─�
 - 하위 폴더 검색: `TabViewModel.RunRecursiveSearchAsync` → `DirectoryLoader.Search`(필터로 제외된 폴더는 들어가지 않음, 링크는 따라가지 않음)를 백그라운드에서 돌리고 150ms마다 결과를 목록에 추가
 - 실행 취소: `UndoService` 스택. `MainViewModel`이 작업마다 되돌리기 동작을 기록. 복사/이동은 작업 전후 대상 폴더 목록을 비교해 새로 생긴 항목만 대상으로 함. 휴지통 복원은 `RecycleBinStore`가 `$Recycle.Bin\<SID>`의 `$I` 메타데이터를 읽어 `$R` 파일을 원래 위치로 이동
 
-### 비교 모드
+### 두 창 = 비교 모드
+- 별도 모드 상태 없이 `MainViewModel.IsDualPane`이 곧 비교 여부 (`IsCompareMode => IsDualPane`). 켜지면 `Compare.Enter`, 꺼지면 `Compare.Exit`
+- 한쪽이 "내 PC"면 `CompareViewModel.RunAsync`가 각 탭을 일반 목록으로 로드하고, 탐색으로 양쪽이 폴더가 되면 자동으로 비교
 - `CompareViewModel.Enter(left, right)` — 두 탭의 `NavigationInterceptor`를 설정해 탐색을 가로챔 (한쪽 이동 → 반대쪽도 같은 상대 경로로)
 - `FolderComparer.CompareLevelAsync` — 현재 폴더 한 단계 열거·병합·파일 판정 (빠름) → 화면 표시
 - `FolderComparer.ResolveDirectoriesAsync` — 하위 폴더 상태를 병렬 재귀 계산, 행마다 콜백 → UI 갱신. 결과는 캐시
 - 좌우 목록은 같은 인덱스에 같은 이름이 오도록 빈 행(`FileItemViewModel.Placeholder`)을 채워 정렬. 선택·스크롤은 인덱스로 동기화
+
+### 파일 작업 / 진행률
+- `Core/FileSystem/FileTransfer` — 복사·이동 엔진. 사전 스캔(전체 바이트) → 진행률·속도·남은 시간 보고, 작은 파일은 `File.Copy`, 큰 파일은 1MB 버퍼 스트림, 시각·속성 보존, 같은 볼륨 이동은 즉시, 폴더 병합, 충돌 콜백, 항목별 오류 수집, 취소 시 부분 파일 삭제
+- `Services/FileTransferService` — 엔진을 스레드 풀에서 실행, 충돌 질문은 UI 스레드 대화상자로 마샬링, `Operations` 컬렉션(`OperationViewModel`)으로 하단 작업 줄에 노출. 휴지통 삭제 같은 셸 작업은 `RunIndeterminateAsync`
+- `MainViewModel.UpdateOperationIndicators` — 대상 폴더를 보는 탭의 `OperationProgress`(주소 표시줄 채움)와 `TaskbarItemInfo` 진행률 갱신
+- 셸(`IFileOperations`)은 휴지통 삭제·이름 바꾸기만 담당 (`FOF_SILENT`로 셸 진행 창 없음)
+
+### 영역 선택 (FilePane)
+- 빈 곳 또는 이름 밖(`Tag="DragHandle"`이 아닌 곳)에서 끌기 → 사각형 오버레이. 가상화로 화면 밖 행은 컨테이너가 없으므로 패널 내용 좌표(스크롤 포함)로 인덱스를 계산: 자세히 = 행 높이, 아이콘 = `VirtualizingWrapPanel.IndicesIntersecting`
+
+### USB 장치 제거
+- `Shell/Services/DriveService` — 꺼낼 수 있는지(이동식·광학, 또는 `IOCTL_STORAGE_QUERY_PROPERTY` 버스 종류가 USB) 판별, 셸 `eject` 동사 실행 후 드라이브가 사라지는지 확인
+- `MainWindow`가 `WM_DEVICECHANGE`를 받아 `MainViewModel.OnDevicesChangedAsync`로 드라이브 목록·탭 갱신
 
 ### 파일 비교
 - `TextFileCodec` — BOM → 엄격 UTF-8 → 시스템 ANSI 순 인코딩 판별, 줄끝·BOM 보존 저장(임시 파일 후 교체)

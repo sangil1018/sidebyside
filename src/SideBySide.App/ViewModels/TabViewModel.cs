@@ -87,6 +87,16 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private int _hiddenCount;
 
+    /// <summary>이 폴더로 진행 중인 파일 작업의 진행률 (0..1, 없으면 -1). 주소 표시줄 배경 채움에 쓰인다.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasOperation))]
+    private double _operationProgress = -1;
+
+    [ObservableProperty]
+    private bool _operationIndeterminate;
+
+    public bool HasOperation => OperationProgress >= 0;
+
     /// <summary>창의 활성 탭인지 (탭 표시줄 강조용).</summary>
     [ObservableProperty]
     private bool _isActive;

@@ -1,4 +1,6 @@
+using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Windows.Shell;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SideBySide.App.Commands;
@@ -10,14 +12,9 @@ using SideBySide.Core.FileSystem;
 using SideBySide.Core.Rename;
 using SideBySide.Core.Sessions;
 using SideBySide.Core.Settings;
+using SideBySide.Shell.Abstractions;
 
 namespace SideBySide.App.ViewModels;
-
-public enum AppMode
-{
-    Explorer,
-    Compare,
-}
 
 /// <summary>
 /// 메인 창 조정자: 모드/레이아웃 상태를 갖고 모든 명령(<see cref="CommandIds"/>)의 동작을 등록한다.
@@ -28,16 +25,15 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly ExplorerContext _ctx;
     private readonly ThemeManager _theme;
     private readonly UndoService _undo;
+    private readonly FileTransferService _transfers;
+    private readonly IDriveService _drives;
     private readonly DispatcherTimer _noticeTimer;
     private CancellationTokenSource? _freeSpaceCts;
     private string? _freeSpaceRoot;
 
+    /// <summary>창 개수가 곧 모드: 한 창 = 탐색기, 두 창 = 폴더 비교.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsCompareMode), nameof(IsRightPaneVisible), nameof(IsSidebarVisible))]
-    private AppMode _mode;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsRightPaneVisible))]
+    [NotifyPropertyChangedFor(nameof(IsCompareMode), nameof(IsRightPaneVisible))]
     private bool _isDualPane;
 
     [ObservableProperty]
@@ -79,11 +75,22 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private ViewMode _viewMode;
 
-    public MainViewModel(ExplorerContext ctx, ThemeManager theme, CommandHost commands, UndoService undo)
+    /// <summary>Windows 작업 표시줄 진행률 (0..1).</summary>
+    [ObservableProperty]
+    private double _taskbarProgress;
+
+    [ObservableProperty]
+    private TaskbarItemProgressState _taskbarState;
+
+    public MainViewModel(ExplorerContext ctx, ThemeManager theme, CommandHost commands, UndoService undo,
+        FileTransferService transfers, IDriveService drives)
     {
         _ctx = ctx;
         _theme = theme;
         _undo = undo;
+        _transfers = transfers;
+        _drives = drives;
+        _transfers.Operations.CollectionChanged += OnOperationsChanged;
         Commands = commands;
         _noticeTimer = new DispatcherTimer(TimeSpan.FromSeconds(4), DispatcherPriority.Background, (_, _) =>
         {
@@ -96,7 +103,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         Left = new PaneViewModel(ctx, PaneSide.Left, s.Left);
         Right = new PaneViewModel(ctx, PaneSide.Right, s.Right);
-        Sidebar = new SidebarViewModel(ctx);
+        Sidebar = new SidebarViewModel(ctx, drives);
         Compare = new CompareViewModel(ctx);
         Preview = new PreviewViewModel();
 
@@ -134,13 +141,17 @@ public sealed partial class MainViewModel : ObservableObject
 
     public CompareViewModel Compare { get; }
 
+    /// <summary>진행 중인 파일 작업 (하단 작업 줄).</summary>
+    public System.Collections.ObjectModel.ObservableCollection<OperationViewModel> Operations => _transfers.Operations;
+
     public PreviewViewModel Preview { get; }
 
-    public bool IsCompareMode => Mode == AppMode.Compare;
+    /// <summary>두 창이면 항상 비교 모드.</summary>
+    public bool IsCompareMode => IsDualPane;
 
-    public bool IsRightPaneVisible => IsDualPane || IsCompareMode;
+    public bool IsRightPaneVisible => IsDualPane;
 
-    public bool IsSidebarVisible => ShowSidebar && !IsCompareMode;
+    public bool IsSidebarVisible => ShowSidebar;
 
     public bool IsDiffOpen => ActiveDiff is not null;
 
@@ -184,8 +195,10 @@ public sealed partial class MainViewModel : ObservableObject
             var (a, b) = (TabViewModel.NormalizePath(args[0]), TabViewModel.NormalizePath(args[1]));
             if (File.Exists(a) && File.Exists(b))
             {
-                IsDualPane = true;
-                await Task.WhenAll(Left.ActiveTab.NavigateAsync(a), Right.ActiveTab.NavigateAsync(b));
+                // 파일 두 개: 각 파일의 폴더를 좌우에 열고 파일 비교 화면
+                Left.ActiveTab.ApplyNavigation(NavKind.Open, TabViewModel.ParentOf(a));
+                Right.ActiveTab.ApplyNavigation(NavKind.Open, TabViewModel.ParentOf(b));
+                StartCompare();
                 await OpenFileDiffAsync(a, b);
                 return;
             }
@@ -194,18 +207,34 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 Left.ActiveTab.ApplyNavigation(NavKind.Open, a);
                 Right.ActiveTab.ApplyNavigation(NavKind.Open, b);
-                Mode = AppMode.Compare;
+                StartCompare();
                 return;
             }
         }
 
         if (args.Count == 1)
         {
-            await Task.WhenAll(Left.ActiveTab.NavigateAsync(args[0]), Right.LoadActiveAsync());
+            IsDualPane = false;
+            await Left.ActiveTab.NavigateAsync(args[0]);
             return;
         }
 
-        await Task.WhenAll(Left.LoadActiveAsync(), Right.LoadActiveAsync());
+        if (IsDualPane) Compare.Enter(Left.ActiveTab, Right.ActiveTab);
+        else await Left.LoadActiveAsync();
+    }
+
+    /// <summary>두 창 비교를 (다시) 시작. 이미 두 창이면 현재 탭 경로로 재비교.</summary>
+    private void StartCompare()
+    {
+        if (IsDualPane)
+        {
+            Compare.Exit();
+            Compare.Enter(Left.ActiveTab, Right.ActiveTab);
+        }
+        else
+        {
+            IsDualPane = true;
+        }
     }
 
     public void SaveState()
@@ -320,8 +349,7 @@ public sealed partial class MainViewModel : ObservableObject
         var c = Commands;
 
         // 모드·레이아웃
-        c.Register(CommandIds.ToggleMode, ToggleMode);
-        c.Register(CommandIds.ToggleDualPane, () => { if (!IsCompareMode) IsDualPane = !IsDualPane; });
+        c.Register(CommandIds.ToggleDualPane, ToggleDualPane);
         c.Register(CommandIds.TogglePreview, () => ShowPreview = !ShowPreview);
         c.Register(CommandIds.ToggleSidebar, () => ShowSidebar = !ShowSidebar);
         c.Register(CommandIds.ToggleHidden, () => ShowHidden = !ShowHidden);
@@ -384,6 +412,11 @@ public sealed partial class MainViewModel : ObservableObject
             var target = ActiveTab.SelectedItem is { IsDirectory: true, IsPlaceholder: false } dir ? dir.FullPath : ActiveTab.Path;
             Sidebar.Pin(target);
         });
+        c.Register(CommandIds.EjectDrive, () =>
+        {
+            var root = ActiveTab.SelectedItem is { IsDrive: true } drive ? drive.FullPath : Path.GetPathRoot(ActiveTab.Path);
+            if (!string.IsNullOrEmpty(root)) _ = EjectAsync(root);
+        });
         c.Register(CommandIds.CopyToRight, () => _ = CopyBetweenPanesAsync(Left, Right), () => IsRightPaneVisible);
         c.Register(CommandIds.CopyToLeft, () => _ = CopyBetweenPanesAsync(Right, Left), () => IsRightPaneVisible);
 
@@ -412,7 +445,8 @@ public sealed partial class MainViewModel : ObservableObject
 
     // ── 명령 구현 ───────────────────────────────────────────────────
 
-    private void ToggleMode()
+    /// <summary>한 창(탐색기) ↔ 두 창(비교).</summary>
+    private void ToggleDualPane()
     {
         if (ActiveDiff is not null)
         {
@@ -420,20 +454,23 @@ public sealed partial class MainViewModel : ObservableObject
             ActiveDiff = null;
         }
 
-        Mode = IsCompareMode ? AppMode.Explorer : AppMode.Compare;
-    }
-
-    partial void OnModeChanged(AppMode value)
-    {
-        if (value == AppMode.Compare) Compare.Enter(Left.ActiveTab, Right.ActiveTab);
-        else Compare.Exit();
-        UpdateStatus();
-        FocusPaneRequested?.Invoke(this, ActivePane);
+        IsDualPane = !IsDualPane;
     }
 
     partial void OnIsDualPaneChanged(bool value)
     {
-        if (!value && ReferenceEquals(ActivePane, Right) && !IsCompareMode) ActivePane = Left;
+        if (value)
+        {
+            Compare.Enter(Left.ActiveTab, Right.ActiveTab);
+        }
+        else
+        {
+            Compare.Exit();
+            if (ReferenceEquals(ActivePane, Right)) ActivePane = Left;
+        }
+
+        UpdateStatus();
+        FocusPaneRequested?.Invoke(this, ActivePane);
     }
 
     partial void OnShowHiddenChanged(bool value) => _ctx.SetShowHidden(value);
@@ -522,7 +559,14 @@ public sealed partial class MainViewModel : ObservableObject
         var tab = ActiveTab;
         var paths = tab.SelectedPaths;
         if (paths.Count == 0) return;
-        if (!await _ctx.FileOperations.DeleteAsync(paths, permanent)) return;
+        if (permanent && !_ctx.Dialogs.Confirm(
+                paths.Count == 1 ? $"'{Path.GetFileName(paths[0])}'을(를) 영구적으로 삭제할까요?\n휴지통을 거치지 않으며 되돌릴 수 없습니다."
+                                 : $"{paths.Count}개 항목을 영구적으로 삭제할까요?\n휴지통을 거치지 않으며 되돌릴 수 없습니다.",
+                "영구 삭제"))
+            return;
+
+        var title = (permanent ? "영구 삭제" : "휴지통으로 이동") + $" · {paths.Count:N0}개";
+        if (!await _transfers.RunIndeterminateAsync(title, tab.Path, () => _ctx.FileOperations.DeleteAsync(paths, permanent))) return;
         if (!permanent)
         {
             _undo.Push($"삭제 ({paths.Count}개)", async () =>
@@ -550,7 +594,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         var sameFolder = clip.Paths.All(p => string.Equals(Path.GetDirectoryName(p), tab.Path, StringComparison.OrdinalIgnoreCase));
         if (clip.Cut && sameFolder) return;
-        var ok = await TransferAsync(clip.Paths, tab.Path, move: clip.Cut, renameOnCollision: !clip.Cut && sameFolder);
+        var ok = await TransferAsync(clip.Paths, tab.Path, move: clip.Cut);
         if (ok && clip.Cut)
         {
             _ctx.Clipboard.Clear();
@@ -586,7 +630,17 @@ public sealed partial class MainViewModel : ObservableObject
         if (!IsRightPaneVisible) return;
         var paths = from.ActiveTab.SelectedPaths;
         var destination = to.ActiveTab.Path;
-        if (paths.Count == 0 || destination.Length == 0) return;
+        if (paths.Count == 0)
+        {
+            ShowNotice((ReferenceEquals(from, Left) ? "왼쪽" : "오른쪽") + " 창에서 복사할 항목을 선택하세요.");
+            return;
+        }
+
+        if (destination.Length == 0)
+        {
+            ShowNotice((ReferenceEquals(to, Left) ? "왼쪽" : "오른쪽") + " 창에서 복사할 폴더를 여세요.");
+            return;
+        }
 
         if (IsCompareMode && !Directory.Exists(destination)) Directory.CreateDirectory(destination);
         if (await TransferAsync(paths, destination, move: false)) await RefreshAfterChangeAsync(to.ActiveTab, []);
@@ -667,7 +721,6 @@ public sealed partial class MainViewModel : ObservableObject
             ActiveDiff = null;
         }
 
-        if (IsCompareMode) Mode = AppMode.Explorer;
         _ctx.Settings.Diff = session.Diff;
         Compare.Method = session.Compare.Method;
         Compare.TimeToleranceSeconds = session.Compare.TimeToleranceSeconds;
@@ -678,7 +731,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         Left.ActiveTab.ApplyNavigation(NavKind.Open, TabViewModel.NormalizePath(session.LeftPath));
         Right.ActiveTab.ApplyNavigation(NavKind.Open, TabViewModel.NormalizePath(session.RightPath));
-        Mode = AppMode.Compare;
+        StartCompare();
         await Task.CompletedTask;
     }
 
@@ -781,55 +834,38 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 복사/이동 + 실행 취소 기록. 작업 전후로 대상 폴더 목록을 비교해 새로 생긴 항목만 되돌린다
-    /// (덮어쓴 항목은 원래 내용을 복구할 수 없으므로 실행 취소 대상에서 제외).
+    /// 진행률을 앱 안에 표시하며 복사/이동하고 실행 취소를 기록한다.
+    /// 대상에 새로 생긴 최상위 항목만 되돌린다 (병합되거나 덮어쓴 기존 항목은 원래 내용을 복구할 수 없으므로 제외).
     /// </summary>
-    private async Task<bool> TransferAsync(IReadOnlyList<string> sources, string destination, bool move, bool renameOnCollision = false)
+    private async Task<bool> TransferAsync(IReadOnlyList<string> sources, string destination, bool move)
     {
-        var before = SnapshotNames(destination);
-        var ok = move
-            ? await _ctx.FileOperations.MoveAsync(sources, destination)
-            : await _ctx.FileOperations.CopyAsync(sources, destination, renameOnCollision);
-
-        var created = SnapshotNames(destination).Except(before, StringComparer.OrdinalIgnoreCase)
-            .Select(name => Path.Combine(destination, name))
-            .ToList();
-        if (created.Count == 0) return ok;
-
-        if (move)
+        var result = await _transfers.TransferAsync(move ? TransferKind.Move : TransferKind.Copy, sources, destination);
+        var created = result.Items.Where(i => i.CreatedNew).ToList();
+        if (created.Count > 0)
         {
-            var origins = sources
-                .Select(src => (Moved: Path.Combine(destination, Path.GetFileName(src)), OriginalDir: Path.GetDirectoryName(src)!))
-                .Where(m => created.Contains(m.Moved, StringComparer.OrdinalIgnoreCase))
-                .ToList();
-            _undo.Push($"이동 ({origins.Count}개)", async () =>
+            if (move)
             {
-                var all = true;
-                foreach (var group in origins.GroupBy(o => o.OriginalDir, StringComparer.OrdinalIgnoreCase))
-                    all &= await _ctx.FileOperations.MoveAsync(group.Select(g => g.Moved).ToList(), group.Key);
-                return all;
-            });
-        }
-        else
-        {
-            _undo.Push($"복사 ({created.Count}개)", () => _ctx.FileOperations.DeleteAsync(created, permanent: false));
+                _undo.Push($"이동 ({created.Count}개)", async () =>
+                {
+                    var all = true;
+                    foreach (var group in created.GroupBy(i => Path.GetDirectoryName(i.Source)!, StringComparer.OrdinalIgnoreCase))
+                    {
+                        var back = await _transfers.TransferAsync(TransferKind.Move, group.Select(i => i.Destination).ToList(), group.Key);
+                        all &= !back.Cancelled && back.Errors.Count == 0;
+                    }
+
+                    return all;
+                });
+            }
+            else
+            {
+                var copies = created.Select(i => i.Destination).ToList();
+                _undo.Push($"복사 ({copies.Count}개)", () =>
+                    _transfers.RunIndeterminateAsync($"복사 취소 · {copies.Count:N0}개", destination, () => _ctx.FileOperations.DeleteAsync(copies, permanent: false)));
+            }
         }
 
-        return ok;
-    }
-
-    private static HashSet<string> SnapshotNames(string directory)
-    {
-        try
-        {
-            return Directory.Exists(directory)
-                ? new HashSet<string>(Directory.EnumerateFileSystemEntries(directory).Select(Path.GetFileName).OfType<string>(), StringComparer.OrdinalIgnoreCase)
-                : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        }
+        return !result.Cancelled && result.Items.Count > 0;
     }
 
     private async Task UndoAsync()
@@ -855,6 +891,94 @@ public sealed partial class MainViewModel : ObservableObject
             if (IsRightPaneVisible) await OtherPane.ActiveTab.RefreshAsync();
         }
     }
+
+    // ── 작업 진행률 표시 (주소 표시줄 · 작업 표시줄) ──────────────────
+
+    private void OnOperationsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems is not null)
+            foreach (OperationViewModel op in e.NewItems) op.PropertyChanged += OnOperationPropertyChanged;
+        if (e.OldItems is not null)
+            foreach (OperationViewModel op in e.OldItems) op.PropertyChanged -= OnOperationPropertyChanged;
+        UpdateOperationIndicators();
+    }
+
+    private void OnOperationPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(OperationViewModel.Fraction) or nameof(OperationViewModel.IsDone) or nameof(OperationViewModel.IsIndeterminate))
+            UpdateOperationIndicators();
+    }
+
+    /// <summary>대상 폴더를 보고 있는 탭의 주소 표시줄과 Windows 작업 표시줄에 진행률을 반영.</summary>
+    private void UpdateOperationIndicators()
+    {
+        var active = Operations.Where(o => !o.IsDone).ToList();
+        foreach (var tab in Left.Tabs.Concat(Right.Tabs))
+        {
+            var op = active.LastOrDefault(o => o.DestinationDirectory is { } d && string.Equals(
+                Path.TrimEndingDirectorySeparator(d), Path.TrimEndingDirectorySeparator(tab.Path), StringComparison.OrdinalIgnoreCase));
+            tab.OperationProgress = op is null ? -1 : op.IsIndeterminate ? 1 : op.Fraction;
+            tab.OperationIndeterminate = op?.IsIndeterminate == true;
+        }
+
+        if (active.Count == 0)
+        {
+            TaskbarState = TaskbarItemProgressState.None;
+            TaskbarProgress = 0;
+        }
+        else if (active.All(o => o.IsIndeterminate))
+        {
+            TaskbarState = TaskbarItemProgressState.Indeterminate;
+        }
+        else
+        {
+            TaskbarState = TaskbarItemProgressState.Normal;
+            TaskbarProgress = active.Where(o => !o.IsIndeterminate).Average(o => o.Fraction);
+        }
+    }
+
+    // ── USB 장치 안전하게 제거 ──────────────────────────────────────
+
+    public bool IsEjectable(string root) => _drives.IsEjectable(root);
+
+    public async Task EjectAsync(string root)
+    {
+        root = Path.GetPathRoot(root) ?? root;
+        var label = root.TrimEnd('\\');
+        if (_transfers.IsBusy && !_ctx.Dialogs.Confirm("진행 중인 파일 작업이 있습니다. 그래도 꺼낼까요?", "장치 꺼내기")) return;
+
+        // 이 앱이 드라이브를 잡고 있으면(파일 감시, 미리보기) "사용 중"으로 실패하므로 먼저 놓는다
+        Preview.Clear();
+        foreach (var tab in Left.Tabs.Concat(Right.Tabs).Where(t => IsOnDrive(t.Path, root)).ToList())
+            await tab.NavigateAsync(TabViewModel.ThisPc);
+
+        ShowNotice($"{label} 꺼내는 중…");
+        var ok = await _drives.EjectAsync(root);
+        ShowNotice(ok
+            ? $"{label} 장치를 안전하게 제거할 수 있습니다."
+            : $"{label} 장치를 꺼내지 못했습니다. 다른 프로그램이 사용 중인지 확인하세요.");
+        await OnDevicesChangedAsync();
+    }
+
+    /// <summary>장치 연결/분리(WM_DEVICECHANGE) 시: 드라이브 목록 갱신, 사라진 드라이브를 보던 탭은 "내 PC"로.</summary>
+    public async Task OnDevicesChangedAsync()
+    {
+        await Sidebar.RefreshDrivesAsync();
+        foreach (var tab in Left.Tabs.Concat(Right.Tabs).ToList())
+        {
+            if (tab.IsThisPc)
+            {
+                if (tab.HasLoaded && !tab.IsCompareView) await tab.LoadAsync();
+            }
+            else if (!Directory.Exists(Path.GetPathRoot(tab.Path)))
+            {
+                await tab.NavigateAsync(TabViewModel.ThisPc);
+            }
+        }
+    }
+
+    private static bool IsOnDrive(string path, string root)
+        => path.Length > 0 && string.Equals(Path.GetPathRoot(path), root, StringComparison.OrdinalIgnoreCase);
 
     private bool HandleShellVerb(string verb)
     {

@@ -13,8 +13,16 @@ public partial class NavigationSidebar : UserControl
 
     private MainViewModel? Main => DataContext as MainViewModel;
 
+    private void OnEjectClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: SidebarItem item } && Main is { } main) _ = main.EjectAsync(item.Path);
+        e.Handled = true;
+    }
+
     private void OnItemMouseUp(object sender, MouseButtonEventArgs e)
     {
+        // 꺼내기 버튼 클릭은 항목 열기로 처리하지 않는다
+        if (VisualTree.FindAncestor<Button>(e.OriginalSource) is not null) return;
         if (Main is null || VisualTree.FindAncestor<ListBoxItem>(e.OriginalSource)?.DataContext is not SidebarItem item) return;
 
         switch (e.ChangedButton)
@@ -42,6 +50,12 @@ public partial class NavigationSidebar : UserControl
         menu.Items.Add(Item("열기", () => main.NavigateActive(item.Path)));
         menu.Items.Add(Item("새 탭에서 열기", () => main.ActivePane.NewTab(item.Path)));
         if (main.IsRightPaneVisible) menu.Items.Add(Item("반대쪽 창에서 열기", () => _ = main.OtherPane.ActiveTab.NavigateAsync(item.Path)));
+        if (item.CanEject)
+        {
+            menu.Items.Add(new Separator());
+            menu.Items.Add(Item("꺼내기 (안전하게 제거)", () => _ = main.EjectAsync(item.Path)));
+        }
+
         if (item.IsPinned)
         {
             menu.Items.Add(new Separator());

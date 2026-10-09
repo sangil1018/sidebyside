@@ -19,7 +19,13 @@
         </Grid.RowDefinitions>
         <TextBlock Style="{StaticResource Glyph}" Text="{Binding Glyph}" Foreground="{DynamicResource Brush.TextSecondary}"
                    Margin="0,0,10,0" />
-        <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+        <DockPanel Grid.Column="1">
+          <!-- 안전하게 제거 (USB 장치) -->
+          <Button DockPanel.Dock="Right" Style="{StaticResource Button.SmallIcon}" Content="⏏" FontFamily="Segoe UI Symbol"
+                  FontSize="12" Margin="4,-3,-6,-3" ToolTip="안전하게 제거 (꺼내기)" Click="OnEjectClick"
+                  Visibility="{Binding CanEject, Converter={StaticResource BoolToVis}}" />
+          <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+        </DockPanel>
         <!-- 드라이브 사용량 -->
         <Grid Grid.Row="1" Grid.Column="1" Margin="0,4,0,1" Visibility="{Binding HasUsage, Converter={StaticResource BoolToVis}}">
           <Border x:Name="Track" Height="3" CornerRadius="1.5" Background="{DynamicResource Brush.Border}" />
