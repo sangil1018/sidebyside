@@ -29,8 +29,10 @@ SideBySide.App  (WPF, MVVM)        ──▶  SideBySide.Shell (Win32/COM)  ─�
 - 하위 폴더 검색: `TabViewModel.RunRecursiveSearchAsync` → `DirectoryLoader.Search`(필터로 제외된 폴더는 들어가지 않음, 링크는 따라가지 않음)를 백그라운드에서 돌리고 150ms마다 결과를 목록에 추가
 - 실행 취소: `UndoService` 스택. `MainViewModel`이 작업마다 되돌리기 동작을 기록. 복사/이동은 작업 전후 대상 폴더 목록을 비교해 새로 생긴 항목만 대상으로 함. 휴지통 복원은 `RecycleBinStore`가 `$Recycle.Bin\<SID>`의 `$I` 메타데이터를 읽어 `$R` 파일을 원래 위치로 이동
 
-### 두 창 = 비교 모드
-- 별도 모드 상태 없이 `MainViewModel.IsDualPane`이 곧 비교 여부 (`IsCompareMode => IsDualPane`). 켜지면 `Compare.Enter`, 꺼지면 `Compare.Exit`
+### 두 창(분할)과 비교
+- 상태는 둘: `MainViewModel.IsDualPane`(두 창)과 `IsCompareMode`(비교). 비교 켜짐 ⇒ 두 창 켜짐. `OnIsCompareModeChanged`가 `Compare.Enter/Exit`를 부르고, 두 창을 끄면 비교도 함께 끈다
+- 두 창만 켠 상태는 일반 탭 두 개 — `Ctrl+→/←` 복사, `Ctrl+Shift+→/←` 이동은 `CopyBetweenPanesAsync(from, to, move)`. 창 사이 끌기는 `FilePane`이 시작 창을 `MainViewModel.DragSourcePane`에 기록해 두고 `ComputeDropEffect`에서 기본 복사(Shift 이동)로 결정
+- 비교를 끄면 `Compare.Exit`가 비교 표시를 지우고 두 탭을 일반 목록으로 다시 불러옴
 - 한쪽이 "내 PC"면 `CompareViewModel.RunAsync`가 각 탭을 일반 목록으로 로드하고, 탐색으로 양쪽이 폴더가 되면 자동으로 비교
 - `CompareViewModel.Enter(left, right)` — 두 탭의 `NavigationInterceptor`를 설정해 탐색을 가로챔 (한쪽 이동 → 반대쪽도 같은 상대 경로로)
 - `FolderComparer.CompareLevelAsync` — 현재 폴더 한 단계 열거·병합·파일 판정 (빠름) → 화면 표시

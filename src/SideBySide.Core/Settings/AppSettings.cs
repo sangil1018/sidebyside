@@ -54,8 +54,11 @@ public sealed class AppSettings
 
     public WindowPlacement Window { get; set; } = new();
 
-    /// <summary>두 창(= 비교 모드)으로 시작할지. 기본은 한 창 탐색기.</summary>
+    /// <summary>두 창으로 시작할지. 기본은 한 창 탐색기.</summary>
     public bool DualPane { get; set; }
+
+    /// <summary>두 창이 켜져 있을 때 비교도 켠 채로 시작할지.</summary>
+    public bool CompareMode { get; set; }
 
     public bool ShowHidden { get; set; }
 

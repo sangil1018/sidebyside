@@ -79,9 +79,9 @@ public partial class MainWindow : Window
                 UpdateColumns();
                 break;
             case nameof(MainViewModel.IsDualPane):
-                if (ViewModel.IsCompareMode)
+                if (ViewModel.IsDualPane)
                 {
-                    // 비교 모드에서는 좌우 같은 너비로 시작
+                    // 두 창을 켜면 좌우 같은 너비로 시작
                     LeftColumn.Width = new GridLength(1, GridUnitType.Star);
                     RightColumn.Width = new GridLength(1, GridUnitType.Star);
                 }
