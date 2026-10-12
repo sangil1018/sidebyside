@@ -5,6 +5,7 @@ public static class CommandIds
 {
     // 모드·레이아웃
     public const string ToggleDualPane = nameof(ToggleDualPane);
+    public const string ToggleCompare = nameof(ToggleCompare);
     public const string TogglePreview = nameof(TogglePreview);
     public const string ToggleSidebar = nameof(ToggleSidebar);
     public const string ToggleHidden = nameof(ToggleHidden);
@@ -48,6 +49,8 @@ public static class CommandIds
     public const string PinFavorite = nameof(PinFavorite);
     public const string CopyToRight = nameof(CopyToRight);
     public const string CopyToLeft = nameof(CopyToLeft);
+    public const string MoveToRight = nameof(MoveToRight);
+    public const string MoveToLeft = nameof(MoveToLeft);
     public const string EjectDrive = nameof(EjectDrive);
 
     // 필터

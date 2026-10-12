@@ -108,6 +108,15 @@ public sealed partial class CompareViewModel : ObservableObject
             tab.NavigationInterceptor = null;
             tab.ExternalChange -= OnExternalChange;
             tab.SelectionChanged -= OnSelectionChanged;
+            // 목록 항목은 다시 불러올 때 재사용되므로 비교 표시를 지운다 (두 창이 계속 보이는 경우 대비)
+            foreach (var item in tab.Items)
+            {
+                item.CompareState = null;
+                item.IsNewer = false;
+                item.Partner = null;
+                item.Row = null;
+            }
+
             _ = tab.LoadAsync(tab.SelectedItems.Where(i => !i.IsPlaceholder).Select(i => i.Name).ToList());
         }
 

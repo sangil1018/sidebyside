@@ -60,17 +60,22 @@
           <TextBlock Text="SideBySide" FontSize="{StaticResource FontSize.Small}" Foreground="{DynamicResource Brush.TextSecondary}" />
         </StackPanel>
 
-        <!-- 한 창 = 탐색기, 두 창 = 폴더 비교 -->
-        <Border Grid.Column="1" Background="{DynamicResource Brush.Hover}" CornerRadius="5" Padding="2"
-                VerticalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True"
-                ToolTip="{cmd:Tip ToggleDualPane}">
-          <StackPanel Orientation="Horizontal">
-            <RadioButton Style="{StaticResource Radio.Segment}" Content="한 창" GroupName="Panes"
-                         IsChecked="{Binding IsDualPane, Converter={StaticResource InverseBool}}" />
-            <RadioButton Style="{StaticResource Radio.Segment}" Content="두 창 비교" GroupName="Panes"
-                         IsChecked="{Binding IsDualPane}" />
-          </StackPanel>
-        </Border>
+        <!-- 한 창 | 두 창 (분할) + 비교 켜기/끄기 -->
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"
+                    WindowChrome.IsHitTestVisibleInChrome="True">
+          <Border Background="{DynamicResource Brush.Hover}" CornerRadius="5" Padding="2"
+                  ToolTip="{cmd:Tip ToggleDualPane}">
+            <StackPanel Orientation="Horizontal">
+              <RadioButton Style="{StaticResource Radio.Segment}" Content="한 창" GroupName="Panes"
+                           IsChecked="{Binding IsDualPane, Converter={StaticResource InverseBool}}" />
+              <RadioButton Style="{StaticResource Radio.Segment}" Content="두 창" GroupName="Panes"
+                           IsChecked="{Binding IsDualPane}" />
+            </StackPanel>
+          </Border>
+          <ToggleButton Style="{StaticResource Button.Ghost}" Margin="6,0,0,0" Content="비교"
+                        IsChecked="{Binding IsCompareMode, Mode=OneWay}"
+                        Command="{cmd:Command ToggleCompare}" ToolTip="{cmd:Tip ToggleCompare}" />
+        </StackPanel>
 
         <StackPanel Grid.Column="3" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True" Margin="0,0,8,0">
           <Button Style="{StaticResource Button.Icon}" Content="&#xE7C3;" Command="{cmd:Command OpenSession}" ToolTip="{cmd:Tip OpenSession}" />
@@ -107,6 +112,35 @@
             <Button Style="{StaticResource Button.Icon}" Content="&#xE756;" Command="{cmd:Command OpenTerminal}" ToolTip="{cmd:Tip OpenTerminal}" />
             <Button Style="{StaticResource Button.Icon}" Content="&#xE718;" Command="{cmd:Command PinFavorite}" ToolTip="{cmd:Tip PinFavorite}" />
 
+            <!-- 두 창: 반대쪽 창으로 복사/이동 -->
+            <StackPanel Orientation="Horizontal" Visibility="{Binding IsDualPane, Converter={StaticResource BoolToVis}}">
+              <Rectangle Width="1" Margin="6,6" Fill="{DynamicResource Brush.Border}" />
+              <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command CopyToRight}" ToolTip="{cmd:Tip CopyToRight}">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="복사" Margin="0,0,6,0" />
+                  <TextBlock Style="{StaticResource Glyph}" Text="&#xE72A;" FontSize="12" />
+                </StackPanel>
+              </Button>
+              <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command CopyToLeft}" ToolTip="{cmd:Tip CopyToLeft}">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Style="{StaticResource Glyph}" Text="&#xE72B;" FontSize="12" Margin="0,0,6,0" />
+                  <TextBlock Text="복사" />
+                </StackPanel>
+              </Button>
+              <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command MoveToRight}" ToolTip="{cmd:Tip MoveToRight}">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="이동" Margin="0,0,6,0" />
+                  <TextBlock Style="{StaticResource Glyph}" Text="&#xE72A;" FontSize="12" />
+                </StackPanel>
+              </Button>
+              <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command MoveToLeft}" ToolTip="{cmd:Tip MoveToLeft}">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Style="{StaticResource Glyph}" Text="&#xE72B;" FontSize="12" Margin="0,0,6,0" />
+                  <TextBlock Text="이동" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+
             <!-- 비교 모드 도구 -->
             <StackPanel Orientation="Horizontal" Visibility="{Binding IsCompareMode, Converter={StaticResource BoolToVis}}">
               <Rectangle Width="1" Margin="6,6" Fill="{DynamicResource Brush.Border}" />
@@ -133,18 +167,6 @@
               </ToggleButton>
               <Button Style="{StaticResource Button.Icon}" Content="&#xE74B;" Command="{cmd:Command NextDifference}" ToolTip="{cmd:Tip NextDifference}" />
               <Button Style="{StaticResource Button.Icon}" Content="&#xE74A;" Command="{cmd:Command PrevDifference}" ToolTip="{cmd:Tip PrevDifference}" />
-              <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command CopyToRight}" ToolTip="{cmd:Tip CopyToRight}">
-                <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="복사" Margin="0,0,6,0" />
-                  <TextBlock Style="{StaticResource Glyph}" Text="&#xE72A;" FontSize="12" />
-                </StackPanel>
-              </Button>
-              <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command CopyToLeft}" ToolTip="{cmd:Tip CopyToLeft}">
-                <StackPanel Orientation="Horizontal">
-                  <TextBlock Style="{StaticResource Glyph}" Text="&#xE72B;" FontSize="12" Margin="0,0,6,0" />
-                  <TextBlock Text="복사" />
-                </StackPanel>
-              </Button>
               <ToggleButton x:Name="CompareOptionsButton" Style="{StaticResource Button.Icon}" Content="&#xE713;" ToolTip="비교 옵션" />
               <Popup PlacementTarget="{Binding ElementName=CompareOptionsButton}" Placement="Bottom" StaysOpen="False"
                      AllowsTransparency="True" IsOpen="{Binding IsChecked, ElementName=CompareOptionsButton}">

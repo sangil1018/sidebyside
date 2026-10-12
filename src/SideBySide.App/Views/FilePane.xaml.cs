@@ -171,7 +171,7 @@ public partial class FilePane : UserControl
 
     private void OnMainPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MainViewModel.ViewMode) or nameof(MainViewModel.IsDualPane)) ApplyView();
+        if (e.PropertyName is nameof(MainViewModel.ViewMode) or nameof(MainViewModel.IsDualPane) or nameof(MainViewModel.IsCompareMode)) ApplyView();
     }
 
     /// <summary>자세히 / 아이콘 보기 전환. 비교 모드는 행 정렬이 필요하므로 항상 자세히 보기.</summary>
@@ -427,7 +427,15 @@ public partial class FilePane : UserControl
         _pressedItem = null;
 
         var data = new DataObject(DataFormats.FileDrop, paths.ToArray());
-        DragDrop.DoDragDrop(List, data, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
+        if (Main is { } main) main.DragSourcePane = _pane;
+        try
+        {
+            DragDrop.DoDragDrop(List, data, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
+        }
+        finally
+        {
+            if (Main is { } m) m.DragSourcePane = null;
+        }
     }
 
     // ── 마우스 끌기 영역 선택 ───────────────────────────────────────
@@ -607,6 +615,11 @@ public partial class FilePane : UserControl
         DragDropEffects wanted;
         if ((e.KeyStates & DragDropKeyStates.ControlKey) != 0) wanted = DragDropEffects.Copy;
         else if ((e.KeyStates & DragDropKeyStates.ShiftKey) != 0) wanted = DragDropEffects.Move;
+        else if (Main is { IsRightPaneVisible: true, DragSourcePane: { } source } && !ReferenceEquals(source, _pane))
+        {
+            // 두 창 사이 끌기: 기본은 복사, Shift를 누르면 이동
+            wanted = DragDropEffects.Copy;
+        }
         else
         {
             // 탐색기와 같은 기본 동작: 같은 드라이브면 이동, 다른 드라이브면 복사

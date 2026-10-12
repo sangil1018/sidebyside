@@ -31,10 +31,14 @@ public sealed partial class MainViewModel : ObservableObject
     private CancellationTokenSource? _freeSpaceCts;
     private string? _freeSpaceRoot;
 
-    /// <summary>창 개수가 곧 모드: 한 창 = 탐색기, 두 창 = 폴더 비교.</summary>
+    /// <summary>두 창(분할): 일반 탐색 창 두 개를 나란히. 비교는 <see cref="IsCompareMode"/>로 따로 켠다.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsCompareMode), nameof(IsRightPaneVisible))]
+    [NotifyPropertyChangedFor(nameof(IsRightPaneVisible))]
     private bool _isDualPane;
+
+    /// <summary>두 창을 서로 비교. 켜면 두 창이 자동으로 켜지고, 두 창을 끄면 비교도 꺼진다.</summary>
+    [ObservableProperty]
+    private bool _isCompareMode;
 
     [ObservableProperty]
     private bool _showPreview;
@@ -108,6 +112,7 @@ public sealed partial class MainViewModel : ObservableObject
         Preview = new PreviewViewModel();
 
         _isDualPane = s.DualPane;
+        _isCompareMode = s.DualPane && s.CompareMode;
         _showPreview = s.ShowPreview;
         _showSidebar = s.ShowSidebar;
         _showHidden = s.ShowHidden;
@@ -145,9 +150,6 @@ public sealed partial class MainViewModel : ObservableObject
     public System.Collections.ObjectModel.ObservableCollection<OperationViewModel> Operations => _transfers.Operations;
 
     public PreviewViewModel Preview { get; }
-
-    /// <summary>두 창이면 항상 비교 모드.</summary>
-    public bool IsCompareMode => IsDualPane;
 
     public bool IsRightPaneVisible => IsDualPane;
 
@@ -214,26 +216,27 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (args.Count == 1)
         {
-            IsDualPane = false;
+            IsDualPane = false; // 비교도 함께 꺼진다
             await Left.ActiveTab.NavigateAsync(args[0]);
             return;
         }
 
-        if (IsDualPane) Compare.Enter(Left.ActiveTab, Right.ActiveTab);
+        if (IsCompareMode) Compare.Enter(Left.ActiveTab, Right.ActiveTab);
+        else if (IsDualPane) await Task.WhenAll(Left.LoadActiveAsync(), Right.LoadActiveAsync());
         else await Left.LoadActiveAsync();
     }
 
     /// <summary>두 창 비교를 (다시) 시작. 이미 두 창이면 현재 탭 경로로 재비교.</summary>
     private void StartCompare()
     {
-        if (IsDualPane)
+        if (IsCompareMode)
         {
             Compare.Exit();
             Compare.Enter(Left.ActiveTab, Right.ActiveTab);
         }
         else
         {
-            IsDualPane = true;
+            IsCompareMode = true; // 두 창이 꺼져 있으면 함께 켜진다
         }
     }
 
@@ -243,6 +246,7 @@ public sealed partial class MainViewModel : ObservableObject
         s.Left = Left.SaveState();
         s.Right = Right.SaveState();
         s.DualPane = IsDualPane;
+        s.CompareMode = IsCompareMode;
         s.ShowPreview = ShowPreview;
         s.ShowSidebar = ShowSidebar;
         s.ViewMode = ViewMode;
@@ -333,14 +337,23 @@ public sealed partial class MainViewModel : ObservableObject
 
     public async Task DropFilesAsync(TabViewModel target, IReadOnlyList<string> files, string? targetDirectory, bool move)
     {
+        var source = DragSourcePane; // 끌기가 끝나면 비워지므로 await 전에 잡아 둔다
         var destination = targetDirectory ?? target.Path;
         if (destination.Length == 0 || files.Count == 0) return;
         if (files.Any(f => PathNames.IsSameOrChildOf(destination, f))) return; // 자기 자신/하위로 이동 금지
         if (files.All(f => string.Equals(Path.GetDirectoryName(f), destination, StringComparison.OrdinalIgnoreCase))) return;
 
         var ok = await TransferAsync(files, destination, move);
-        if (ok) await RefreshAfterChangeAsync(target, files.Select(Path.GetFileName).OfType<string>().ToList());
+        if (!ok) return;
+
+        await RefreshAfterChangeAsync(target, files.Select(Path.GetFileName).OfType<string>().ToList());
+        // 두 창 사이 이동이면 원본 창도 갱신 (비교 중이면 위에서 양쪽이 다시 비교된다)
+        if (move && IsRightPaneVisible && !IsCompareMode && source is not null && !ReferenceEquals(source.ActiveTab, target))
+            await RefreshAfterChangeAsync(source.ActiveTab, []);
     }
+
+    /// <summary>지금 끌고 있는 파일이 시작된 창. 두 창 사이 끌기는 기본이 복사라서 드롭 쪽에서 구분하는 데 쓴다.</summary>
+    public PaneViewModel? DragSourcePane { get; set; }
 
     // ── 명령 등록 ───────────────────────────────────────────────────
 
@@ -350,6 +363,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         // 모드·레이아웃
         c.Register(CommandIds.ToggleDualPane, ToggleDualPane);
+        c.Register(CommandIds.ToggleCompare, ToggleCompare);
         c.Register(CommandIds.TogglePreview, () => ShowPreview = !ShowPreview);
         c.Register(CommandIds.ToggleSidebar, () => ShowSidebar = !ShowSidebar);
         c.Register(CommandIds.ToggleHidden, () => ShowHidden = !ShowHidden);
@@ -417,8 +431,10 @@ public sealed partial class MainViewModel : ObservableObject
             var root = ActiveTab.SelectedItem is { IsDrive: true } drive ? drive.FullPath : Path.GetPathRoot(ActiveTab.Path);
             if (!string.IsNullOrEmpty(root)) _ = EjectAsync(root);
         });
-        c.Register(CommandIds.CopyToRight, () => _ = CopyBetweenPanesAsync(Left, Right), () => IsRightPaneVisible);
-        c.Register(CommandIds.CopyToLeft, () => _ = CopyBetweenPanesAsync(Right, Left), () => IsRightPaneVisible);
+        c.Register(CommandIds.CopyToRight, () => _ = CopyBetweenPanesAsync(Left, Right, move: false), () => IsRightPaneVisible);
+        c.Register(CommandIds.CopyToLeft, () => _ = CopyBetweenPanesAsync(Right, Left, move: false), () => IsRightPaneVisible);
+        c.Register(CommandIds.MoveToRight, () => _ = CopyBetweenPanesAsync(Left, Right, move: true), () => IsRightPaneVisible);
+        c.Register(CommandIds.MoveToLeft, () => _ = CopyBetweenPanesAsync(Right, Left, move: true), () => IsRightPaneVisible);
 
         // 필터
         c.Register(CommandIds.EditFilter, EditFilter);
@@ -445,32 +461,60 @@ public sealed partial class MainViewModel : ObservableObject
 
     // ── 명령 구현 ───────────────────────────────────────────────────
 
-    /// <summary>한 창(탐색기) ↔ 두 창(비교).</summary>
+    /// <summary>한 창 ↔ 두 창(분할). 비교는 따로 켠다.</summary>
     private void ToggleDualPane()
     {
-        if (ActiveDiff is not null)
-        {
-            if (!ActiveDiff.ConfirmClose()) return;
-            ActiveDiff = null;
-        }
-
+        if (!CloseDiffForModeChange()) return;
         IsDualPane = !IsDualPane;
+    }
+
+    /// <summary>두 창 비교 켜기/끄기. 두 창이 꺼져 있으면 함께 켠다.</summary>
+    private void ToggleCompare()
+    {
+        if (!CloseDiffForModeChange()) return;
+        IsCompareMode = !IsCompareMode;
+    }
+
+    private bool CloseDiffForModeChange()
+    {
+        if (ActiveDiff is null) return true;
+        if (!ActiveDiff.ConfirmClose()) return false;
+        ActiveDiff = null;
+        return true;
     }
 
     partial void OnIsDualPaneChanged(bool value)
     {
+        if (!value)
+        {
+            IsCompareMode = false;
+            if (ReferenceEquals(ActivePane, Right)) ActivePane = Left;
+        }
+        else if (!IsCompareMode)
+        {
+            // 처음 열린 오른쪽 창은 아직 목록이 없으므로 불러온다
+            _ = Right.LoadActiveAsync();
+        }
+
+        Commands.RaiseCanExecuteChanged(); // 반대쪽 창 복사/이동, 차이 이동 등의 사용 가능 여부
+        UpdateStatus();
+        FocusPaneRequested?.Invoke(this, ActivePane);
+    }
+
+    partial void OnIsCompareModeChanged(bool value)
+    {
         if (value)
         {
+            if (!IsDualPane) IsDualPane = true;
             Compare.Enter(Left.ActiveTab, Right.ActiveTab);
         }
         else
         {
             Compare.Exit();
-            if (ReferenceEquals(ActivePane, Right)) ActivePane = Left;
         }
 
+        Commands.RaiseCanExecuteChanged();
         UpdateStatus();
-        FocusPaneRequested?.Invoke(this, ActivePane);
     }
 
     partial void OnShowHiddenChanged(bool value) => _ctx.SetShowHidden(value);
@@ -625,25 +669,30 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    private async Task CopyBetweenPanesAsync(PaneViewModel from, PaneViewModel to)
+    private async Task CopyBetweenPanesAsync(PaneViewModel from, PaneViewModel to, bool move)
     {
         if (!IsRightPaneVisible) return;
+        var verb = move ? "이동" : "복사";
         var paths = from.ActiveTab.SelectedPaths;
         var destination = to.ActiveTab.Path;
         if (paths.Count == 0)
         {
-            ShowNotice((ReferenceEquals(from, Left) ? "왼쪽" : "오른쪽") + " 창에서 복사할 항목을 선택하세요.");
+            ShowNotice((ReferenceEquals(from, Left) ? "왼쪽" : "오른쪽") + $" 창에서 {verb}할 항목을 선택하세요.");
             return;
         }
 
         if (destination.Length == 0)
         {
-            ShowNotice((ReferenceEquals(to, Left) ? "왼쪽" : "오른쪽") + " 창에서 복사할 폴더를 여세요.");
+            ShowNotice((ReferenceEquals(to, Left) ? "왼쪽" : "오른쪽") + $" 창에서 {verb}할 폴더를 여세요.");
             return;
         }
 
+        if (paths.Any(p => PathNames.IsSameOrChildOf(destination, p))) return; // 자기 자신/하위로 금지
         if (IsCompareMode && !Directory.Exists(destination)) Directory.CreateDirectory(destination);
-        if (await TransferAsync(paths, destination, move: false)) await RefreshAfterChangeAsync(to.ActiveTab, []);
+        if (!await TransferAsync(paths, destination, move)) return;
+
+        await RefreshAfterChangeAsync(to.ActiveTab, []);
+        if (move && !IsCompareMode) await RefreshAfterChangeAsync(from.ActiveTab, []);
     }
 
     private void EditFilter()
