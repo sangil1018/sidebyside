@@ -10,6 +10,7 @@ public static class CommandIds
     public const string ToggleSidebar = nameof(ToggleSidebar);
     public const string ToggleHidden = nameof(ToggleHidden);
     public const string ToggleTheme = nameof(ToggleTheme);
+    public const string OpenSettings = nameof(OpenSettings);
     public const string SwitchPane = nameof(SwitchPane);
     public const string ViewDetails = nameof(ViewDetails);
     public const string ViewMediumIcons = nameof(ViewMediumIcons);

@@ -81,6 +81,7 @@ public partial class App : Application
         services.AddSingleton<IContextMenuService, ShellContextMenu>();
         services.AddSingleton<ILauncher, ShellLauncher>();
         services.AddSingleton<IDriveService, DriveService>();
+        services.AddSingleton<IFileManagerRegistration, FileManagerRegistration>();
 
         // App
         services.AddSingleton<ThemeManager>();

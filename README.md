@@ -68,6 +68,8 @@ git difftool --tool=sidebyside
 | Ctrl+Shift+B | 탐색 창 | 전체 |
 | Ctrl+H | 숨김 항목 표시 | 전체 |
 | Ctrl+Shift+T | 라이트 / 다크 테마 | 전체 |
+| Ctrl+, | 환경설정 (테마, 기본 파일 관리자) | 전체 |
+| Win+Alt+E (설정에서 변경) | SideBySide 창을 앞으로 가져오기 (앱이 실행 중일 때, 다른 프로그램과 공유) | 전역 |
 | Ctrl+Shift+6 / 3 / 2, Ctrl+휠 | 자세히 / 중간 아이콘 / 큰 아이콘 보기 | 전체 (비교 중에는 자세히 고정) |
 | Ctrl+T / Ctrl+W | 새 탭 / 탭 닫기 | 전체 |
 | Ctrl+Tab / Ctrl+Shift+Tab | 다음 / 이전 탭 | 전체 |
@@ -167,6 +169,10 @@ SideBySide에서 한 작업을 최근 것부터 최대 50개까지 되돌립니�
 ## 설정 / 로그
 
 - 설정: `%AppData%\SideBySide\settings.json` (창 위치, 탭, 필터 프리셋, 세션, 테마)
+- 환경설정 창 (툴바의 톱니 아이콘 또는 Ctrl+,): 테마, **기본 파일 관리자**.
+  - 기본 파일 관리자를 켜면 현재 사용자 레지스트리(`HKCU\Software\Classes\Directory\shell\open\command`)를 이 앱으로 바꿉니다. 관리자 권한은 필요 없습니다. 바꾸기 전 값은 기억해 두었다가 끄면 그대로 되돌립니다.
+  - 창 열기 단축키는 Win+Alt+E(기본), Win+Ctrl+E, Win+Shift+E 중 고를 수 있습니다. Win+E와 Win+D는 Windows가 예약해서 쓸 수 없습니다. 같은 키를 다른 프로그램이 쓰고 있으면 등록되지 않고 상태 표시줄에 알립니다.
+  - 적용 범위: 다른 프로그램이 폴더를 "열기"로 열 때. Win+E, 작업 표시줄, 탐색기 안에서 폴더를 더블클릭하는 동작은 Windows 탐색기가 그대로 처리합니다.
 - 오류 로그: `%LocalAppData%\SideBySide\error.log`
 
 ## 수동 점검 목록 (Windows)

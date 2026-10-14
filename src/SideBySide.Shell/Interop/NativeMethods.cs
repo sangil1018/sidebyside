@@ -113,6 +113,13 @@ internal static class NativeMethods
     public const int WM_MEASUREITEM = 0x002C;
     public const int WM_INITMENUPOPUP = 0x0117;
     public const int WM_MENUCHAR = 0x0120;
+    public const int WM_HOTKEY = 0x0312;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct POINT

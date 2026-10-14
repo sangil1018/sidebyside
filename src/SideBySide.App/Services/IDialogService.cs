@@ -28,4 +28,7 @@ public interface IDialogService
 
     /// <summary>세션 선택. 목록은 대화상자 안에서 삭제될 수 있다.</summary>
     CompareSession? PickSession(IList<CompareSession> sessions);
+
+    /// <summary>환경설정. 확인하면 새 값, 취소하면 null.</summary>
+    AppPreferences? EditPreferences(AppPreferences current);
 }
