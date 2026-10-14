@@ -72,6 +72,7 @@ public static class CommandRegistry
         new(CommandIds.ToggleSidebar, "탐색 창", Key.B, CtrlShift, CommandScope.Global),
         new(CommandIds.ToggleHidden, "숨김 항목 표시", Key.H, Ctrl, CommandScope.Global),
         new(CommandIds.ToggleTheme, "라이트 / 다크 테마", Key.T, CtrlShift, CommandScope.Global),
+        new(CommandIds.OpenSettings, "환경설정", Key.OemComma, Ctrl, CommandScope.Global),
         new(CommandIds.SwitchPane, "왼쪽 / 오른쪽 창 전환", Key.Tab, None, CommandScope.FileList),
         new(CommandIds.ViewDetails, "자세히", Key.D6, CtrlShift, CommandScope.Global, "Ctrl+Shift+6"),
         new(CommandIds.ViewMediumIcons, "중간 아이콘", Key.D3, CtrlShift, CommandScope.Global, "Ctrl+Shift+3"),

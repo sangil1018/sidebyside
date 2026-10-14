@@ -27,6 +27,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly UndoService _undo;
     private readonly FileTransferService _transfers;
     private readonly IDriveService _drives;
+    private readonly IFileManagerRegistration _fileManager;
     private readonly DispatcherTimer _noticeTimer;
     private CancellationTokenSource? _freeSpaceCts;
     private string? _freeSpaceRoot;
@@ -87,9 +88,10 @@ public sealed partial class MainViewModel : ObservableObject
     private TaskbarItemProgressState _taskbarState;
 
     public MainViewModel(ExplorerContext ctx, ThemeManager theme, CommandHost commands, UndoService undo,
-        FileTransferService transfers, IDriveService drives)
+        FileTransferService transfers, IDriveService drives, IFileManagerRegistration fileManager)
     {
         _ctx = ctx;
+        _fileManager = fileManager;
         _theme = theme;
         _undo = undo;
         _transfers = transfers;
@@ -368,6 +370,7 @@ public sealed partial class MainViewModel : ObservableObject
         c.Register(CommandIds.ToggleSidebar, () => ShowSidebar = !ShowSidebar);
         c.Register(CommandIds.ToggleHidden, () => ShowHidden = !ShowHidden);
         c.Register(CommandIds.ToggleTheme, () => _ctx.Settings.Theme = _theme.Cycle());
+        c.Register(CommandIds.OpenSettings, OpenSettings);
         c.Register(CommandIds.ViewDetails, () => ViewMode = ViewMode.Details);
         c.Register(CommandIds.ViewMediumIcons, () => { if (!IsCompareMode) ViewMode = ViewMode.MediumIcons; });
         c.Register(CommandIds.ViewLargeIcons, () => { if (!IsCompareMode) ViewMode = ViewMode.LargeIcons; });
@@ -758,6 +761,32 @@ public sealed partial class MainViewModel : ObservableObject
             Diff = _ctx.Settings.Diff,
             ShowDifferencesOnly = Compare.ShowDifferencesOnly,
         });
+    }
+
+    private void OpenSettings()
+    {
+        var current = new AppPreferences(_ctx.Settings.Theme, _fileManager.IsEnabled);
+        var result = _ctx.Dialogs.EditPreferences(current);
+        if (result is null) return;
+
+        if (result.Theme != current.Theme)
+        {
+            _ctx.Settings.Theme = result.Theme;
+            _theme.Apply(result.Theme);
+        }
+
+        if (result.DefaultFileManager == current.DefaultFileManager) return;
+        try
+        {
+            if (result.DefaultFileManager)
+                _fileManager.Enable(Environment.ProcessPath ?? throw new InvalidOperationException("실행 파일 경로를 찾을 수 없습니다."));
+            else
+                _fileManager.Disable();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            _ctx.Dialogs.ShowError("기본 파일 관리자 설정을 바꾸지 못했습니다.\n" + ex.Message);
+        }
     }
 
     private async Task OpenSessionAsync()

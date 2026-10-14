@@ -55,6 +55,12 @@ public sealed class DialogService(ThemeManager theme) : IDialogService
         return dialog.ShowDialog() == true ? dialog.Selected : null;
     }
 
+    public AppPreferences? EditPreferences(AppPreferences current)
+    {
+        var dialog = Prepare(new SettingsDialog(current));
+        return dialog.ShowDialog() == true ? dialog.Result : null;
+    }
+
     private static MessageBoxResult Show(string message, string title, MessageBoxButton buttons, MessageBoxImage image)
         => Owner is { IsLoaded: true } owner
             ? MessageBox.Show(owner, message, title, buttons, image)
