@@ -15,6 +15,15 @@
       <CheckBox x:Name="DefaultManager" Content="기본 파일 관리자로 사용" />
       <TextBlock Style="{StaticResource Dialog.Hint}" Margin="22,6,0,0" TextWrapping="Wrap"
                  Text="다른 프로그램이 폴더를 열 때 SideBySide로 엽니다. 끄면 원래 설정(Windows 탐색기)으로 되돌립니다. Win+E와 작업 표시줄의 탐색기 아이콘은 그대로 탐색기를 엽니다." />
+
+      <TextBlock Style="{StaticResource Dialog.Label}" Text="창 열기 단축키" Margin="0,20,0,8" />
+      <StackPanel>
+        <RadioButton x:Name="ShortcutWinAltE" Content="Win + Alt + E" GroupName="Shortcut" Margin="0,0,0,8" />
+        <RadioButton x:Name="ShortcutWinCtrlE" Content="Win + Ctrl + E" GroupName="Shortcut" Margin="0,0,0,8" />
+        <RadioButton x:Name="ShortcutWinShiftE" Content="Win + Shift + E" GroupName="Shortcut" />
+      </StackPanel>
+      <TextBlock Style="{StaticResource Dialog.Hint}" Margin="0,6,0,0" TextWrapping="Wrap"
+                 Text="SideBySide가 실행 중일 때 이 키로 창을 앞으로 가져옵니다. 다른 프로그램이 같은 키를 쓰면 등록되지 않습니다." />
     </StackPanel>
     <Border Style="{StaticResource Dialog.Footer}">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">

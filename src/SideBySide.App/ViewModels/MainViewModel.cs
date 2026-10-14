@@ -763,9 +763,12 @@ public sealed partial class MainViewModel : ObservableObject
         });
     }
 
+    /// <summary>창 열기 단축키가 바뀌었다 (창이 다시 등록한다).</summary>
+    public event EventHandler? OpenShortcutChanged;
+
     private void OpenSettings()
     {
-        var current = new AppPreferences(_ctx.Settings.Theme, _fileManager.IsEnabled);
+        var current = new AppPreferences(_ctx.Settings.Theme, _fileManager.IsEnabled, _ctx.Settings.OpenShortcut);
         var result = _ctx.Dialogs.EditPreferences(current);
         if (result is null) return;
 
@@ -773,6 +776,12 @@ public sealed partial class MainViewModel : ObservableObject
         {
             _ctx.Settings.Theme = result.Theme;
             _theme.Apply(result.Theme);
+        }
+
+        if (result.OpenShortcut != current.OpenShortcut)
+        {
+            _ctx.Settings.OpenShortcut = result.OpenShortcut;
+            OpenShortcutChanged?.Invoke(this, EventArgs.Empty);
         }
 
         if (result.DefaultFileManager == current.DefaultFileManager) return;

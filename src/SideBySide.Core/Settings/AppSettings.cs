@@ -12,6 +12,14 @@ public enum ThemeMode
     Dark,
 }
 
+/// <summary>Win 조합으로 SideBySide 창을 앞으로 가져오는 단축키. 셸이 예약하지 않은 조합만 제공한다.</summary>
+public enum OpenShortcut
+{
+    WinAltE,
+    WinCtrlE,
+    WinShiftE,
+}
+
 /// <summary>파일 목록 보기 방식. 비교 모드는 항상 자세히 보기.</summary>
 public enum ViewMode
 {
@@ -51,6 +59,9 @@ public sealed class AppSettings
     public int Version { get; set; } = CurrentVersion;
 
     public ThemeMode Theme { get; set; } = ThemeMode.System;
+
+    /// <summary>앱이 켜져 있을 때 창을 앞으로 가져오는 전역 단축키.</summary>
+    public OpenShortcut OpenShortcut { get; set; } = OpenShortcut.WinAltE;
 
     public WindowPlacement Window { get; set; } = new();
 

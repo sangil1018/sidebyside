@@ -17,6 +17,7 @@ namespace SideBySide.App;
 public partial class MainWindow : Window
 {
     private const int WM_DEVICECHANGE = 0x0219;
+    private const int WM_HOTKEY = 0x0312;
     private const int DBT_DEVICEARRIVAL = 0x8000;
     private const int DBT_DEVICEREMOVECOMPLETE = 0x8004;
 
@@ -44,6 +45,7 @@ public partial class MainWindow : Window
         viewModel.FocusAddressRequested += (_, pane) => PaneView(pane).FocusAddress();
         viewModel.FocusSearchRequested += (_, pane) => PaneView(pane).FocusSearch();
         viewModel.ContextMenuRequested += (_, pane) => PaneView(pane).ShowContextMenuForSelection();
+        viewModel.OpenShortcutChanged += (_, _) => RegisterOpenShortcut();
 
         LeftPane.VerticalScrolled += (_, offset) => SyncScroll(RightPane, offset);
         RightPane.VerticalScrolled += (_, offset) => SyncScroll(LeftPane, offset);
@@ -53,6 +55,8 @@ public partial class MainWindow : Window
             var hwnd = new WindowInteropHelper(this).Handle;
             WindowTheming.SetRoundCorners(hwnd);
             HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+            RegisterOpenShortcut();
+            Closed += (_, _) => GlobalHotkey.Unregister(hwnd);
         };
         _deviceTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
         _deviceTimer.Tick += (_, _) =>
@@ -135,8 +139,33 @@ public partial class MainWindow : Window
     }
 
     /// <summary>USB 장치 연결/분리 감지 → 드라이브 목록 갱신 (연속 알림은 묶어서 한 번만).</summary>
+    /// <summary>앱 전역 단축키로 창을 앞으로 가져온다 (앱이 실행 중일 때만 동작).</summary>
+    private void RegisterOpenShortcut()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return;
+
+        GlobalHotkey.Unregister(hwnd);
+        var (modifiers, key) = _settings.OpenShortcut switch
+        {
+            OpenShortcut.WinCtrlE => (GlobalHotkey.ModWin | GlobalHotkey.ModControl, GlobalHotkey.VkE),
+            OpenShortcut.WinShiftE => (GlobalHotkey.ModWin | GlobalHotkey.ModShift, GlobalHotkey.VkE),
+            _ => (GlobalHotkey.ModWin | GlobalHotkey.ModAlt, GlobalHotkey.VkE),
+        };
+        if (!GlobalHotkey.Register(hwnd, modifiers, key))
+            ViewModel.ShowNotice("창 열기 단축키를 등록하지 못했습니다. 다른 프로그램이 같은 키를 쓰고 있을 수 있습니다.");
+    }
+
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        if (msg == WM_HOTKEY && wParam.ToInt32() == GlobalHotkey.Id)
+        {
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+            Activate();
+            handled = true;
+            return IntPtr.Zero;
+        }
+
         if (msg == WM_DEVICECHANGE && (wParam.ToInt32() == DBT_DEVICEARRIVAL || wParam.ToInt32() == DBT_DEVICEREMOVECOMPLETE))
         {
             _deviceTimer.Stop();
