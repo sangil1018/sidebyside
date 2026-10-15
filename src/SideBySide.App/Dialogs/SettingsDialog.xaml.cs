@@ -49,19 +49,31 @@ public partial class SettingsDialog : Window
         }).IsChecked = true;
         (current.Language == AppLanguage.English ? LanguageEnglish : LanguageKorean).IsChecked = true;
         DefaultManager.IsChecked = current.DefaultFileManager;
-        (current.OpenShortcut switch
+        ShortcutBox.SelectedIndex = current.OpenShortcut switch
         {
-            OpenShortcut.WinCtrlE => ShortcutWinCtrlE,
-            OpenShortcut.WinShiftE => ShortcutWinShiftE,
-            _ => ShortcutWinAltE,
-        }).IsChecked = true;
+            OpenShortcut.WinCtrlE => 1,
+            OpenShortcut.WinShiftE => 2,
+            _ => 0,
+        };
         ShortcutWhenClosed.IsChecked = current.ShortcutWhenClosed;
 
-        foreach (var (place, name, _, _) in SidebarViewModel.SystemPlaces)
+        foreach (var (place, name, _, glyph) in SidebarViewModel.SystemPlaces)
         {
-            var box = new CheckBox { Content = name, IsChecked = current.SystemPlaces.Contains(place), Margin = new Thickness(0, 0, 0, 8) };
+            if (SystemPlacesPanel.Children.Count > 0) SystemPlacesPanel.Children.Add(new Border { Style = (Style)FindResource("Settings.Divider") });
+            var box = new CheckBox { IsChecked = current.SystemPlaces.Contains(place), VerticalAlignment = VerticalAlignment.Center };
+            var row = new Grid { Style = (Style)FindResource("Settings.Row") };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var icon = new TextBlock { Text = glyph, Style = (Style)FindResource("Glyph"), Margin = new Thickness(0, 0, 12, 0) };
+            var label = new TextBlock { Text = name, Style = (Style)FindResource("Settings.RowTitle"), VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetColumn(label, 1);
+            Grid.SetColumn(box, 2);
+            row.Children.Add(icon);
+            row.Children.Add(label);
+            row.Children.Add(box);
             _placeBoxes[place] = box;
-            SystemPlacesPanel.Children.Add(box);
+            SystemPlacesPanel.Children.Add(row);
         }
 
         _bindings = new Dictionary<string, string>(current.KeyBindings);
@@ -204,9 +216,12 @@ public partial class SettingsDialog : Window
         var theme = ThemeDark.IsChecked == true ? ThemeMode.Dark
             : ThemeLight.IsChecked == true ? ThemeMode.Light
             : ThemeMode.System;
-        var shortcut = ShortcutWinCtrlE.IsChecked == true ? OpenShortcut.WinCtrlE
-            : ShortcutWinShiftE.IsChecked == true ? OpenShortcut.WinShiftE
-            : OpenShortcut.WinAltE;
+        var shortcut = ShortcutBox.SelectedIndex switch
+        {
+            1 => OpenShortcut.WinCtrlE,
+            2 => OpenShortcut.WinShiftE,
+            _ => OpenShortcut.WinAltE,
+        };
         var places = _placeBoxes.Where(p => p.Value.IsChecked == true).Select(p => p.Key).ToList();
         Result = new AppPreferences(
             theme,
