@@ -161,10 +161,21 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
     /// <summary>비교 모드에서 폴더 내용이 바뀌었음 (비교 엔진이 다시 비교).</summary>
     public event EventHandler? ExternalChange;
 
+    /// <summary>셸이 "내 PC"를 넘길 때 쓰는 이름.</summary>
+    private const string ThisPcClsid = "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}";
+
+    /// <summary>파일 시스템 경로가 아닌 셸 가상 폴더(휴지통, 제어판 등). "내 PC"는 앱이 직접 보여주므로 제외.</summary>
+    public static bool IsVirtualFolder(string path)
+    {
+        path = path.Trim().Trim('"');
+        if (path.StartsWith(ThisPcClsid, StringComparison.OrdinalIgnoreCase)) return false;
+        return path.StartsWith("::", StringComparison.Ordinal) || path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase);
+    }
+
     public static string NormalizePath(string path)
     {
         path = path.Trim().Trim('"');
-        if (path.Length == 0 || path == "내 PC") return ThisPc;
+        if (path.Length == 0 || path == "내 PC" || path.StartsWith(ThisPcClsid, StringComparison.OrdinalIgnoreCase)) return ThisPc;
         path = Environment.ExpandEnvironmentVariables(path);
         if (path.Length == 2 && path[1] == ':') path += "\\";
         try

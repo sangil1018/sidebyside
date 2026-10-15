@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using SideBySide.App.Commands;
+using SideBySide.App.Services;
 using SideBySide.App.ViewModels;
 using SideBySide.App.Views;
 using SideBySide.Core.Settings;
@@ -146,12 +147,23 @@ public partial class MainWindow : Window
         if (hwnd == IntPtr.Zero) return;
 
         GlobalHotkey.Unregister(hwnd);
-        var (modifiers, key) = _settings.OpenShortcut switch
+
+        // 앱이 꺼져 있어도 쓰는 설정이면 백그라운드 에이전트가 키를 갖는다 (같은 키는 한 곳만 등록 가능)
+        if (HotkeyAgent.IsEnabled)
         {
-            OpenShortcut.WinCtrlE => (GlobalHotkey.ModWin | GlobalHotkey.ModControl, GlobalHotkey.VkE),
-            OpenShortcut.WinShiftE => (GlobalHotkey.ModWin | GlobalHotkey.ModShift, GlobalHotkey.VkE),
-            _ => (GlobalHotkey.ModWin | GlobalHotkey.ModAlt, GlobalHotkey.VkE),
-        };
+            try
+            {
+                HotkeyAgent.EnsureRunning(_settings.OpenShortcut);
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+            {
+                ViewModel.ShowNotice("단축키 백그라운드 실행을 시작하지 못했습니다: " + ex.Message);
+            }
+
+            return;
+        }
+
+        var (modifiers, key) = HotkeyAgent.KeysFor(_settings.OpenShortcut);
         if (!GlobalHotkey.Register(hwnd, modifiers, key))
             ViewModel.ShowNotice("창 열기 단축키를 등록하지 못했습니다. 다른 프로그램이 같은 키를 쓰고 있을 수 있습니다.");
     }

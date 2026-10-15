@@ -192,6 +192,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     public async Task InitializeAsync(IReadOnlyList<string> args)
     {
+        RefreshFileManagerRegistration();
         _ = Sidebar.RefreshDrivesAsync();
 
         if (args.Count >= 2)
@@ -763,12 +764,28 @@ public sealed partial class MainViewModel : ObservableObject
         });
     }
 
+    /// <summary>
+    /// 기본 파일 관리자가 켜져 있으면 등록을 갱신한다: 실행 파일 위치가 바뀌었거나,
+    /// 이전 버전에서 켠 경우 새로 추가된 항목("새 창에서 열기")을 채운다. 원래 값 백업은 처음 한 번만 하므로 반복해도 안전.
+    /// </summary>
+    private void RefreshFileManagerRegistration()
+    {
+        try
+        {
+            if (_fileManager.IsEnabled && Environment.ProcessPath is { } exe) _fileManager.Enable(exe);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            // 갱신 실패는 시작을 막지 않는다
+        }
+    }
+
     /// <summary>창 열기 단축키가 바뀌었다 (창이 다시 등록한다).</summary>
     public event EventHandler? OpenShortcutChanged;
 
     private void OpenSettings()
     {
-        var current = new AppPreferences(_ctx.Settings.Theme, _fileManager.IsEnabled, _ctx.Settings.OpenShortcut);
+        var current = new AppPreferences(_ctx.Settings.Theme, _fileManager.IsEnabled, _ctx.Settings.OpenShortcut, HotkeyAgent.IsEnabled);
         var result = _ctx.Dialogs.EditPreferences(current);
         if (result is null) return;
 
@@ -778,9 +795,22 @@ public sealed partial class MainViewModel : ObservableObject
             _theme.Apply(result.Theme);
         }
 
-        if (result.OpenShortcut != current.OpenShortcut)
+        var shortcutChanged = result.OpenShortcut != current.OpenShortcut;
+        var whenClosedChanged = result.ShortcutWhenClosed != current.ShortcutWhenClosed;
+        if (shortcutChanged || whenClosedChanged)
         {
             _ctx.Settings.OpenShortcut = result.OpenShortcut;
+            try
+            {
+                // 에이전트를 먼저 정리한 뒤 창이 다시 등록한다 (켜면 창은 등록을 풀고 에이전트를 띄운다)
+                if (result.ShortcutWhenClosed) HotkeyAgent.Enable(result.OpenShortcut);
+                else if (whenClosedChanged) HotkeyAgent.Disable();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+            {
+                _ctx.Dialogs.ShowError("단축키 백그라운드 실행 설정을 바꾸지 못했습니다.\n" + ex.Message);
+            }
+
             OpenShortcutChanged?.Invoke(this, EventArgs.Empty);
         }
 

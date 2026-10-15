@@ -22,6 +22,7 @@ public partial class SettingsDialog : Window
             OpenShortcut.WinShiftE => ShortcutWinShiftE,
             _ => ShortcutWinAltE,
         }).IsChecked = true;
+        ShortcutWhenClosed.IsChecked = current.ShortcutWhenClosed;
     }
 
     public AppPreferences? Result { get; private set; }
@@ -34,7 +35,7 @@ public partial class SettingsDialog : Window
         var shortcut = ShortcutWinCtrlE.IsChecked == true ? OpenShortcut.WinCtrlE
             : ShortcutWinShiftE.IsChecked == true ? OpenShortcut.WinShiftE
             : OpenShortcut.WinAltE;
-        Result = new AppPreferences(theme, DefaultManager.IsChecked == true, shortcut);
+        Result = new AppPreferences(theme, DefaultManager.IsChecked == true, shortcut, ShortcutWhenClosed.IsChecked == true);
         DialogResult = true;
     }
 }
