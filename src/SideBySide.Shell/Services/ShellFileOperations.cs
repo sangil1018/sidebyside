@@ -4,6 +4,7 @@ using SideBySide.Core.FileSystem;
 using SideBySide.Core.RecycleBin;
 using SideBySide.Shell.Abstractions;
 using static SideBySide.Shell.Interop.NativeMethods;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.Shell.Services;
 
@@ -36,14 +37,14 @@ public sealed class ShellFileOperations(IOwnerWindow owner) : IFileOperations
 
     public string CreateFolder(string parentDirectory)
     {
-        var path = PathNames.MakeUnique(parentDirectory, "새 폴더");
+        var path = PathNames.MakeUnique(parentDirectory, L.T("새 폴더"));
         Directory.CreateDirectory(path);
         return path;
     }
 
     public string CreateTextFile(string parentDirectory)
     {
-        var path = PathNames.MakeUnique(parentDirectory, "새 텍스트 문서", ".txt");
+        var path = PathNames.MakeUnique(parentDirectory, L.T("새 텍스트 문서"), ".txt");
         using (File.Create(path))
         {
         }

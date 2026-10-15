@@ -1,6 +1,7 @@
 using System.Windows;
 using SideBySide.App.Infrastructure;
 using SideBySide.Core.FileSystem;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App.Dialogs;
 
@@ -11,7 +12,7 @@ public partial class ConflictDialog : Window
     {
         InitializeComponent();
         var name = Path.GetFileName(conflict.DestinationPath);
-        Headline.Text = $"'{Path.GetDirectoryName(conflict.DestinationPath)}'에 '{name}'이(가) 이미 있습니다.";
+        Headline.Text = L.F("'{0}'에 '{1}'이(가) 이미 있습니다.", Path.GetDirectoryName(conflict.DestinationPath), name);
         SourceInfo.Text = Describe(conflict.SourceIsDirectory, conflict.SourceSize, conflict.SourceModifiedUtc, conflict.SourceModifiedUtc > conflict.DestinationModifiedUtc);
         TargetInfo.Text = Describe(conflict.DestinationIsDirectory, conflict.DestinationSize, conflict.DestinationModifiedUtc, conflict.DestinationModifiedUtc > conflict.SourceModifiedUtc);
 
@@ -25,7 +26,7 @@ public partial class ConflictDialog : Window
     public bool ApplyToAll => ApplyAllBox.IsChecked == true;
 
     private static string Describe(bool isDirectory, long size, DateTime modifiedUtc, bool newer)
-        => (isDirectory ? "폴더" : Formatting.Size(size)) + " · " + Formatting.Date(modifiedUtc) + (newer ? " (더 최신)" : string.Empty);
+        => (isDirectory ? L.T("폴더") : Formatting.Size(size)) + " · " + Formatting.Date(modifiedUtc) + (newer ? L.T(" (더 최신)") : string.Empty);
 
     private void Finish(ConflictChoice choice)
     {

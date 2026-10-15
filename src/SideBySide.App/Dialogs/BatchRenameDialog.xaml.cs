@@ -1,5 +1,6 @@
 using System.Windows;
 using SideBySide.Core.Rename;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App.Dialogs;
 
@@ -40,7 +41,7 @@ public partial class BatchRenameDialog : Window
 
         var errors = _preview.Count(p => p.Error is not null);
         var changed = _preview.Count(p => p.IsChanged);
-        SummaryText.Text = errors > 0 ? $"문제 {errors}개를 해결해야 합니다." : $"{_preview.Count}개 중 {changed}개 변경";
+        SummaryText.Text = errors > 0 ? L.F("문제 {0}개를 해결해야 합니다.", errors) : L.F("{0}개 중 {1}개 변경", _preview.Count, changed);
         ApplyButton.IsEnabled = errors == 0 && changed > 0;
     }
 

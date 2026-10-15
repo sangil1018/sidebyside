@@ -2,6 +2,7 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SideBySide.App.Services;
 using SideBySide.Core.Compare;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App.ViewModels;
 
@@ -154,13 +155,13 @@ public sealed partial class CompareViewModel : ObservableObject
             _rows = [];
             _vmByRow.Clear();
             IsRunning = false;
-            Summary = "양쪽 창에서 폴더를 열면 비교합니다.";
+            Summary = L.T("양쪽 창에서 폴더를 열면 비교합니다.");
             await Task.WhenAll(_left.LoadAsync(select), _right.LoadAsync(select));
             return;
         }
 
         IsRunning = true;
-        Summary = "비교 중…";
+        Summary = L.T("비교 중…");
         var filter = _ctx.Filter;
         var options = Options;
         try
@@ -352,7 +353,7 @@ public sealed partial class CompareViewModel : ObservableObject
     {
         if (_rows.Count == 0)
         {
-            if (!IsRunning && Summary == "비교 중…") Summary = "항목 없음";
+            if (!IsRunning && Summary == L.T("비교 중…")) Summary = L.T("항목 없음");
             return;
         }
 
@@ -370,9 +371,9 @@ public sealed partial class CompareViewModel : ObservableObject
         }
 
         var text = diff + leftOnly + rightOnly == 0 && pending == 0
-            ? $"모두 같음 ({same}개)"
-            : $"다름 {diff} · 왼쪽만 {leftOnly} · 오른쪽만 {rightOnly} · 같음 {same}";
-        if (pending > 0) text += $" · 폴더 확인 중 {pending}";
+            ? L.F("모두 같음 ({0}개)", same)
+            : L.F("다름 {0} · 왼쪽만 {1} · 오른쪽만 {2} · 같음 {3}", diff, leftOnly, rightOnly, same);
+        if (pending > 0) text += L.F(" · 폴더 확인 중 {0}", pending);
         Summary = text;
     }
 

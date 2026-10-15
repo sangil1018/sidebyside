@@ -9,6 +9,7 @@ using SideBySide.App.Infrastructure;
 using SideBySide.App.ViewModels;
 using SideBySide.Core.FileSystem;
 using SideBySide.Core.Settings;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App.Views;
 
@@ -45,7 +46,7 @@ public partial class FilePane : UserControl
         _gridView = (GridView)List.View;
         _locationColumn = new GridViewColumn
         {
-            Header = new GridViewColumnHeader { Content = "위치" },
+            Header = new GridViewColumnHeader { Content = L.T("위치") },
             Width = 200,
             CellTemplate = (DataTemplate)FindResource("Cell.Location"),
         };

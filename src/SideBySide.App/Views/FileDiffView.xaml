@@ -1,6 +1,7 @@
 <UserControl x:Class="SideBySide.App.Views.FileDiffView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="clr-namespace:SideBySide.App.Infrastructure"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:cmd="clr-namespace:SideBySide.App.Commands"
@@ -44,7 +45,7 @@
       <StackPanel Margin="14,8" ToolTip="{Binding LeftPath}">
         <StackPanel Orientation="Horizontal">
           <TextBlock Style="{StaticResource FileHeaderName}" Text="{Binding LeftName}" />
-          <TextBlock Text=" ●" Foreground="{DynamicResource Brush.DiffChangedMark}" ToolTip="저장 안 됨"
+          <TextBlock Text=" ●" Foreground="{DynamicResource Brush.DiffChangedMark}" ToolTip="{l:T '저장 안 됨'}"
                      Visibility="{Binding LeftDirty, Converter={StaticResource BoolToVis}}" />
         </StackPanel>
         <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding LeftInfo}" />
@@ -53,7 +54,7 @@
       <StackPanel Grid.Column="2" Margin="14,8" ToolTip="{Binding RightPath}">
         <StackPanel Orientation="Horizontal">
           <TextBlock Style="{StaticResource FileHeaderName}" Text="{Binding RightName}" />
-          <TextBlock Text=" ●" Foreground="{DynamicResource Brush.DiffChangedMark}" ToolTip="저장 안 됨"
+          <TextBlock Text=" ●" Foreground="{DynamicResource Brush.DiffChangedMark}" ToolTip="{l:T '저장 안 됨'}"
                      Visibility="{Binding RightDirty, Converter={StaticResource BoolToVis}}" />
         </StackPanel>
         <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding RightInfo}" />
@@ -74,12 +75,12 @@
           <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command DiffApplyToLeft}" ToolTip="{cmd:Tip DiffApplyToLeft}">
             <StackPanel Orientation="Horizontal">
               <TextBlock Style="{StaticResource Glyph}" Text="&#xE72B;" FontSize="12" Margin="0,0,6,0" />
-              <TextBlock Text="왼쪽에 적용" />
+              <TextBlock Text="{l:T '왼쪽에 적용'}" />
             </StackPanel>
           </Button>
           <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command DiffApplyToRight}" ToolTip="{cmd:Tip DiffApplyToRight}">
             <StackPanel Orientation="Horizontal">
-              <TextBlock Text="오른쪽에 적용" Margin="0,0,6,0" />
+              <TextBlock Text="{l:T '오른쪽에 적용'}" Margin="0,0,6,0" />
               <TextBlock Style="{StaticResource Glyph}" Text="&#xE72A;" FontSize="12" />
             </StackPanel>
           </Button>
@@ -89,18 +90,18 @@
                         Command="{cmd:Command DiffToggleEdit}" ToolTip="{cmd:Tip DiffToggleEdit}">
             <StackPanel Orientation="Horizontal">
               <TextBlock Style="{StaticResource Glyph}" Text="&#xE70F;" Margin="0,0,6,0" />
-              <TextBlock Text="편집" />
+              <TextBlock Text="{l:T '편집'}" />
             </StackPanel>
           </ToggleButton>
           <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command DiffSave}" ToolTip="{cmd:Tip DiffSave}">
             <StackPanel Orientation="Horizontal">
               <TextBlock Style="{StaticResource Glyph}" Text="&#xE74E;" Margin="0,0,6,0" />
-              <TextBlock Text="저장" />
+              <TextBlock Text="{l:T '저장'}" />
             </StackPanel>
           </Button>
           <Rectangle Width="1" Margin="6,6" Fill="{DynamicResource Brush.Border}" />
-          <CheckBox Content="공백 무시" IsChecked="{Binding IgnoreWhitespace}" Margin="6,0,12,0" />
-          <CheckBox Content="대소문자 무시" IsChecked="{Binding IgnoreCase}" />
+          <CheckBox Content="{l:T '공백 무시'}" IsChecked="{Binding IgnoreWhitespace}" Margin="6,0,12,0" />
+          <CheckBox Content="{l:T '대소문자 무시'}" IsChecked="{Binding IgnoreCase}" />
         </StackPanel>
       </DockPanel>
     </Border>

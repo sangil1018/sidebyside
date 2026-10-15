@@ -4,6 +4,7 @@ using SideBySide.App.Infrastructure;
 using SideBySide.Core.Compare;
 using SideBySide.Core.FileSystem;
 using SideBySide.Shell.Abstractions;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App.ViewModels;
 
@@ -84,7 +85,7 @@ public sealed partial class FileItemViewModel : ObservableObject
 
     public string ModifiedText => Entry is null || IsDrive ? string.Empty : Formatting.Date(Entry.LastWriteTimeUtc);
 
-    public string TypeText => Entry is null ? string.Empty : _typeText ??= IsDrive ? "드라이브" : _icons.GetTypeName(Entry.FullPath, IsDirectory);
+    public string TypeText => Entry is null ? string.Empty : _typeText ??= IsDrive ? L.T("드라이브") : _icons.GetTypeName(Entry.FullPath, IsDirectory);
 
     /// <summary>하위 폴더 검색 결과에서 검색 시작 폴더 기준 상대 위치 (예: "src\\Views").</summary>
     public string Location { get; init; } = string.Empty;

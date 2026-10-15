@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SideBySide.App.Infrastructure;
 using SideBySide.Core.FileSystem;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App.ViewModels;
 
@@ -58,7 +59,7 @@ public sealed partial class OperationViewModel : ObservableObject
         CurrentItem = p.CurrentItem;
         var parts = new List<string>
         {
-            $"{p.FilesDone:N0} / {p.FilesTotal:N0}개",
+            L.F("{0:N0} / {1:N0}개", p.FilesDone, p.FilesTotal),
             $"{Formatting.Size(p.BytesDone)} / {Formatting.Size(p.BytesTotal)}",
         };
         if (p.BytesPerSecond > 1024 && p.BytesDone < p.BytesTotal) parts.Add($"{Formatting.Size((long)p.BytesPerSecond)}/s");
@@ -79,13 +80,13 @@ public sealed partial class OperationViewModel : ObservableObject
     private void Cancel()
     {
         _cts?.Cancel();
-        Details = "취소하는 중…";
+        Details = L.T("취소하는 중…");
     }
 
     private bool CanExecuteCancel() => CanCancel && !IsDone;
 
     private static string FormatRemaining(TimeSpan t)
-        => t.TotalHours >= 1 ? $"{(int)t.TotalHours}시간 {t.Minutes}분 남음"
-         : t.TotalMinutes >= 1 ? $"{(int)t.TotalMinutes}분 {t.Seconds}초 남음"
-         : $"{t.Seconds}초 남음";
+        => t.TotalHours >= 1 ? L.F("{0}시간 {1}분 남음", (int)t.TotalHours, t.Minutes)
+         : t.TotalMinutes >= 1 ? L.F("{0}분 {1}초 남음", (int)t.TotalMinutes, t.Seconds)
+         : L.F("{0}초 남음", t.Seconds);
 }

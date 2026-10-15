@@ -1,6 +1,7 @@
 <UserControl x:Class="SideBySide.App.Views.FilePane"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="clr-namespace:SideBySide.App.Infrastructure"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:SideBySide.App.ViewModels"
@@ -127,9 +128,9 @@
                   </Border.InputBindings>
                   <Border.ContextMenu>
                     <ContextMenu>
-                      <MenuItem Header="탭 닫기" CommandParameter="{Binding}"
+                      <MenuItem Header="{l:T '탭 닫기'}" CommandParameter="{Binding}"
                                 Command="{Binding PlacementTarget.Tag.CloseTabCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                      <MenuItem Header="다른 탭 모두 닫기" CommandParameter="{Binding}"
+                      <MenuItem Header="{l:T '다른 탭 모두 닫기'}" CommandParameter="{Binding}"
                                 Command="{Binding PlacementTarget.Tag.CloseOtherTabsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                     </ContextMenu>
                   </Border.ContextMenu>
@@ -138,7 +139,7 @@
                                Fill="{DynamicResource Brush.Accent}" Visibility="Collapsed" />
                     <DockPanel>
                       <Button DockPanel.Dock="Right" Style="{StaticResource Button.SmallIcon}" Content="&#xE711;" Opacity="0.7"
-                              ToolTip="탭 닫기 (Ctrl+W)" CommandParameter="{Binding}"
+                              ToolTip="{l:T '탭 닫기 (Ctrl+W)'}" CommandParameter="{Binding}"
                               Command="{Binding DataContext.CloseTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                       <TextBlock x:Name="TabTitle" Text="{Binding Title}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
                                  Margin="0,0,6,0" Foreground="{DynamicResource Brush.TextSecondary}" />
@@ -165,7 +166,7 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
           <Button Style="{StaticResource Button.Icon}" Content="&#xE710;" FontSize="12" Height="28" Margin="2,6,0,0"
-                  Command="{Binding AddTabCommand}" ToolTip="새 탭 (Ctrl+T)" />
+                  Command="{Binding AddTabCommand}" ToolTip="{l:T '새 탭 (Ctrl+T)'}" />
         </StackPanel>
       </ScrollViewer>
     </Border>
@@ -178,13 +179,13 @@
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
       <StackPanel Orientation="Horizontal">
-        <Button Style="{StaticResource Button.Icon}" Content="&#xE72B;" Click="OnBack" ToolTip="뒤로 (Alt+←)"
+        <Button Style="{StaticResource Button.Icon}" Content="&#xE72B;" Click="OnBack" ToolTip="{l:T '뒤로 (Alt+←)'}"
                 IsEnabled="{Binding ActiveTab.CanGoBack}" />
-        <Button Style="{StaticResource Button.Icon}" Content="&#xE72A;" Click="OnForward" ToolTip="앞으로 (Alt+→)"
+        <Button Style="{StaticResource Button.Icon}" Content="&#xE72A;" Click="OnForward" ToolTip="{l:T '앞으로 (Alt+→)'}"
                 IsEnabled="{Binding ActiveTab.CanGoForward}" />
-        <Button Style="{StaticResource Button.Icon}" Content="&#xE74A;" Click="OnUp" ToolTip="상위 폴더 (Alt+↑)"
+        <Button Style="{StaticResource Button.Icon}" Content="&#xE74A;" Click="OnUp" ToolTip="{l:T '상위 폴더 (Alt+↑)'}"
                 IsEnabled="{Binding ActiveTab.CanGoUp}" />
-        <Button Style="{StaticResource Button.Icon}" Content="&#xE72C;" Click="OnRefresh" ToolTip="새로 고침 (F5)" />
+        <Button Style="{StaticResource Button.Icon}" Content="&#xE72C;" Click="OnRefresh" ToolTip="{l:T '새로 고침 (F5)'}" />
       </StackPanel>
       <views:AddressBar x:Name="Address" Grid.Column="1" Margin="4,0,6,0" DataContext="{Binding ActiveTab}" />
       <Grid Grid.Column="2" Width="210">
@@ -193,13 +194,13 @@
                  PreviewKeyDown="OnSearchKeyDown" />
         <TextBlock Style="{StaticResource Glyph}" Text="&#xE721;" FontSize="12" HorizontalAlignment="Left" Margin="9,0,0,0"
                    Foreground="{DynamicResource Brush.TextSecondary}" IsHitTestVisible="False" />
-        <TextBlock Text="검색" Margin="27,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+        <TextBlock Text="{l:T '검색'}" Margin="27,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
                    Foreground="{DynamicResource Brush.TextDisabled}"
                    Visibility="{Binding ActiveTab.SearchText, Converter={StaticResource NullToVisInv}}" />
         <ToggleButton Style="{StaticResource Button.SmallIcon}" Content="&#xE8B7;" FontSize="11" Width="24" Height="22"
                       HorizontalAlignment="Right" Margin="0,0,4,0" Focusable="False"
                       IsChecked="{Binding ActiveTab.SearchSubfolders}"
-                      ToolTip="하위 폴더까지 검색 (검색란에서 Enter)" />
+                      ToolTip="{l:T '하위 폴더까지 검색 (검색란에서 Enter)'}" />
       </Grid>
     </Grid>
 
@@ -228,7 +229,7 @@
               <GridViewColumn.Header>
                 <GridViewColumnHeader Tag="Name">
                   <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="이름" />
+                    <TextBlock Text="{l:T '이름'}" />
                     <TextBlock x:Name="SortName" Style="{StaticResource Glyph}" FontSize="8" Margin="6,0,0,0" />
                   </StackPanel>
                 </GridViewColumnHeader>
@@ -254,7 +255,7 @@
                              PreviewKeyDown="OnRenameKeyDown"
                              LostKeyboardFocus="OnRenameLostFocus" />
                     <Ellipse Grid.Column="2" Width="6" Height="6" Margin="6,0,0,0" Fill="{DynamicResource Brush.Newer}"
-                             ToolTip="이쪽이 더 최신입니다" Visibility="{Binding IsNewer, Converter={StaticResource BoolToVis}}" />
+                             ToolTip="{l:T '이쪽이 더 최신입니다'}" Visibility="{Binding IsNewer, Converter={StaticResource BoolToVis}}" />
                   </Grid>
                 </DataTemplate>
               </GridViewColumn.CellTemplate>
@@ -263,7 +264,7 @@
               <GridViewColumn.Header>
                 <GridViewColumnHeader Tag="Modified">
                   <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="수정한 날짜" />
+                    <TextBlock Text="{l:T '수정한 날짜'}" />
                     <TextBlock x:Name="SortModified" Style="{StaticResource Glyph}" FontSize="8" Margin="6,0,0,0" />
                   </StackPanel>
                 </GridViewColumnHeader>
@@ -278,7 +279,7 @@
               <GridViewColumn.Header>
                 <GridViewColumnHeader Tag="Type">
                   <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="유형" />
+                    <TextBlock Text="{l:T '유형'}" />
                     <TextBlock x:Name="SortType" Style="{StaticResource Glyph}" FontSize="8" Margin="6,0,0,0" />
                   </StackPanel>
                 </GridViewColumnHeader>
@@ -294,7 +295,7 @@
                 <GridViewColumnHeader Tag="Size" HorizontalContentAlignment="Right">
                   <StackPanel Orientation="Horizontal">
                     <TextBlock x:Name="SortSize" Style="{StaticResource Glyph}" FontSize="8" Margin="0,0,6,0" />
-                    <TextBlock Text="크기" />
+                    <TextBlock Text="{l:T '크기'}" />
                   </StackPanel>
                 </GridViewColumnHeader>
               </GridViewColumn.Header>

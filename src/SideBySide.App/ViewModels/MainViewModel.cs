@@ -13,6 +13,7 @@ using SideBySide.Core.Rename;
 using SideBySide.Core.Sessions;
 using SideBySide.Core.Settings;
 using SideBySide.Shell.Abstractions;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App.ViewModels;
 
@@ -171,8 +172,8 @@ public sealed partial class MainViewModel : ObservableObject
             var f = _ctx.Settings.Filter;
             if (f.IsEmpty) return string.Empty;
             var parts = new List<string>();
-            if (!string.IsNullOrWhiteSpace(f.Exclude)) parts.Add("제외 " + string.Join(", ", FilterSet.SplitPatterns(f.Exclude)));
-            if (!string.IsNullOrWhiteSpace(f.Include)) parts.Add("포함 " + string.Join(", ", FilterSet.SplitPatterns(f.Include)));
+            if (!string.IsNullOrWhiteSpace(f.Exclude)) parts.Add(L.T("제외 ") + string.Join(", ", FilterSet.SplitPatterns(f.Exclude)));
+            if (!string.IsNullOrWhiteSpace(f.Include)) parts.Add(L.T("포함 ") + string.Join(", ", FilterSet.SplitPatterns(f.Include)));
             return (f.Name.Length > 0 ? f.Name + ": " : string.Empty) + string.Join(" / ", parts);
         }
     }
@@ -302,7 +303,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (await _ctx.FileOperations.RenameAsync(oldPath, newName))
         {
             var newPath = Path.Combine(Path.GetDirectoryName(oldPath)!, newName);
-            _undo.Push("이름 바꾸기", () => _ctx.FileOperations.RenameAsync(newPath, oldName));
+            _undo.Push(L.T("이름 바꾸기"), () => _ctx.FileOperations.RenameAsync(newPath, oldName));
             await RefreshAfterChangeAsync(tab, [newName]);
         }
     }
@@ -337,6 +338,19 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     public void NavigateActive(string path) => _ = ActiveTab.NavigateAsync(path);
+
+    /// <summary>휴지통·제어판 같은 시스템 위치를 Windows로 연다.</summary>
+    public void OpenSystemPlace(string target)
+    {
+        try
+        {
+            _ctx.Launcher.OpenShellPlace(target);
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            ShowNotice(ex.Message);
+        }
+    }
 
     public async Task DropFilesAsync(TabViewModel target, IReadOnlyList<string> files, string? targetDirectory, bool move)
     {
@@ -580,7 +594,7 @@ public sealed partial class MainViewModel : ObservableObject
         else if (items.Count > 1 && _ctx.Dialogs.BatchRename(items.Select(i => i.FullPath).ToList()) is { Count: > 0 } applied)
         {
             var reverse = applied.Select(p => new RenamePreview(p.NewPath, p.OriginalName, null)).ToList();
-            _undo.Push($"이름 바꾸기 ({applied.Count}개)", () => Task.Run(() =>
+            _undo.Push(L.F("이름 바꾸기 ({0}개)", applied.Count), () => Task.Run(() =>
             {
                 try
                 {
@@ -608,16 +622,16 @@ public sealed partial class MainViewModel : ObservableObject
         var paths = tab.SelectedPaths;
         if (paths.Count == 0) return;
         if (permanent && !_ctx.Dialogs.Confirm(
-                paths.Count == 1 ? $"'{Path.GetFileName(paths[0])}'을(를) 영구적으로 삭제할까요?\n휴지통을 거치지 않으며 되돌릴 수 없습니다."
-                                 : $"{paths.Count}개 항목을 영구적으로 삭제할까요?\n휴지통을 거치지 않으며 되돌릴 수 없습니다.",
-                "영구 삭제"))
+                paths.Count == 1 ? L.F("'{0}'을(를) 영구적으로 삭제할까요?\n휴지통을 거치지 않으며 되돌릴 수 없습니다.", Path.GetFileName(paths[0]))
+                                 : L.F("{0}개 항목을 영구적으로 삭제할까요?\n휴지통을 거치지 않으며 되돌릴 수 없습니다.", paths.Count),
+                L.T("영구 삭제")))
             return;
 
-        var title = (permanent ? "영구 삭제" : "휴지통으로 이동") + $" · {paths.Count:N0}개";
+        var title = (permanent ? L.T("영구 삭제") : L.T("휴지통으로 이동")) + L.F(" · {0:N0}개", paths.Count);
         if (!await _transfers.RunIndeterminateAsync(title, tab.Path, () => _ctx.FileOperations.DeleteAsync(paths, permanent))) return;
         if (!permanent)
         {
-            _undo.Push($"삭제 ({paths.Count}개)", async () =>
+            _undo.Push(L.F("삭제 ({0}개)", paths.Count), async () =>
             {
                 var restored = await _ctx.FileOperations.RestoreFromRecycleBinAsync(paths);
                 return restored.Count == paths.Count;
@@ -660,7 +674,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             var path = folder ? _ctx.FileOperations.CreateFolder(tab.Path) : _ctx.FileOperations.CreateTextFile(tab.Path);
             var name = Path.GetFileName(path);
-            _undo.Push(folder ? "새 폴더 만들기" : "새 파일 만들기", () => _ctx.FileOperations.DeleteAsync([path], permanent: false));
+            _undo.Push(folder ? L.T("새 폴더 만들기") : L.T("새 파일 만들기"), () => _ctx.FileOperations.DeleteAsync([path], permanent: false));
             if (tab.IsCompareView) await Compare.RunAsync(clearCache: true, select: [name]);
             else await tab.LoadAsync([name]);
 
@@ -676,18 +690,19 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task CopyBetweenPanesAsync(PaneViewModel from, PaneViewModel to, bool move)
     {
         if (!IsRightPaneVisible) return;
-        var verb = move ? "이동" : "복사";
         var paths = from.ActiveTab.SelectedPaths;
         var destination = to.ActiveTab.Path;
         if (paths.Count == 0)
         {
-            ShowNotice((ReferenceEquals(from, Left) ? "왼쪽" : "오른쪽") + $" 창에서 {verb}할 항목을 선택하세요.");
+            var side = ReferenceEquals(from, Left) ? L.T("왼쪽 창") : L.T("오른쪽 창");
+            ShowNotice(move ? L.F("{0}에서 이동할 항목을 선택하세요.", side) : L.F("{0}에서 복사할 항목을 선택하세요.", side));
             return;
         }
 
         if (destination.Length == 0)
         {
-            ShowNotice((ReferenceEquals(to, Left) ? "왼쪽" : "오른쪽") + $" 창에서 {verb}할 폴더를 여세요.");
+            var side = ReferenceEquals(to, Left) ? L.T("왼쪽 창") : L.T("오른쪽 창");
+            ShowNotice(move ? L.F("{0}에서 이동할 대상 폴더를 여세요.", side) : L.F("{0}에서 복사할 대상 폴더를 여세요.", side));
             return;
         }
 
@@ -734,7 +749,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (IsRightPaneVisible && left is { IsDirectory: false, IsPlaceholder: false } && right is { IsDirectory: false, IsPlaceholder: false })
             _ = OpenFileDiffAsync(left.FullPath, right.FullPath);
         else
-            _ctx.Dialogs.ShowError("비교할 파일을 왼쪽·오른쪽 창에서 하나씩 선택하거나, 한 창에서 두 개를 선택하세요.");
+            _ctx.Dialogs.ShowError(L.T("비교할 파일을 왼쪽·오른쪽 창에서 하나씩 선택하거나, 한 창에서 두 개를 선택하세요."));
     }
 
     private void SaveSession()
@@ -743,11 +758,11 @@ public sealed partial class MainViewModel : ObservableObject
         var right = Right.ActiveTab.Path;
         if (left.Length == 0 || right.Length == 0)
         {
-            _ctx.Dialogs.ShowError("양쪽 창에서 비교할 폴더를 연 뒤 저장하세요.");
+            _ctx.Dialogs.ShowError(L.T("양쪽 창에서 비교할 폴더를 연 뒤 저장하세요."));
             return;
         }
 
-        var name = _ctx.Dialogs.Prompt("비교 세션 저장", "세션 이름", $"{Path.GetFileName(left)} ↔ {Path.GetFileName(right)}");
+        var name = _ctx.Dialogs.Prompt(L.T("비교 세션 저장"), L.T("세션 이름"), $"{Path.GetFileName(left)} ↔ {Path.GetFileName(right)}");
         if (string.IsNullOrWhiteSpace(name)) return;
 
         var sessions = _ctx.Settings.Sessions;
@@ -785,9 +800,39 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void OpenSettings()
     {
-        var current = new AppPreferences(_ctx.Settings.Theme, _fileManager.IsEnabled, _ctx.Settings.OpenShortcut, HotkeyAgent.IsEnabled);
+        var settings = _ctx.Settings;
+        var current = new AppPreferences(
+            settings.Theme,
+            settings.Language,
+            _fileManager.IsEnabled,
+            settings.OpenShortcut,
+            HotkeyAgent.IsEnabled,
+            settings.SystemPlaces.ToList(),
+            new Dictionary<string, string>(settings.KeyBindings));
         var result = _ctx.Dialogs.EditPreferences(current);
         if (result is null) return;
+
+        if (result.Language != current.Language)
+        {
+            settings.Language = result.Language;
+            ShowNotice(result.Language == AppLanguage.English
+                ? "The language will change the next time SideBySide starts."
+                : L.T("언어는 다시 시작하면 바뀝니다."));
+        }
+
+        if (!result.SystemPlaces.SequenceEqual(current.SystemPlaces))
+        {
+            settings.SystemPlaces = result.SystemPlaces.ToList();
+            Sidebar.Refresh();
+        }
+
+        if (result.KeyBindings.Count != current.KeyBindings.Count
+            || result.KeyBindings.Any(kv => !current.KeyBindings.TryGetValue(kv.Key, out var v) || v != kv.Value))
+        {
+            settings.KeyBindings = new Dictionary<string, string>(result.KeyBindings);
+            CommandRegistry.ApplyOverrides(settings.KeyBindings);
+            Commands.RebindAll();
+        }
 
         if (result.Theme != current.Theme)
         {
@@ -808,7 +853,7 @@ public sealed partial class MainViewModel : ObservableObject
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
             {
-                _ctx.Dialogs.ShowError("단축키 백그라운드 실행 설정을 바꾸지 못했습니다.\n" + ex.Message);
+                _ctx.Dialogs.ShowError(L.T("단축키 백그라운드 실행 설정을 바꾸지 못했습니다.\n") + ex.Message);
             }
 
             OpenShortcutChanged?.Invoke(this, EventArgs.Empty);
@@ -818,13 +863,13 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             if (result.DefaultFileManager)
-                _fileManager.Enable(Environment.ProcessPath ?? throw new InvalidOperationException("실행 파일 경로를 찾을 수 없습니다."));
+                _fileManager.Enable(Environment.ProcessPath ?? throw new InvalidOperationException(L.T("실행 파일 경로를 찾을 수 없습니다.")));
             else
                 _fileManager.Disable();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
-            _ctx.Dialogs.ShowError("기본 파일 관리자 설정을 바꾸지 못했습니다.\n" + ex.Message);
+            _ctx.Dialogs.ShowError(L.T("기본 파일 관리자 설정을 바꾸지 못했습니다.\n") + ex.Message);
         }
     }
 
@@ -897,9 +942,9 @@ public sealed partial class MainViewModel : ObservableObject
         var tab = ActiveTab;
         WindowTitle = $"{tab.Title} - SideBySide";
         StatusText = IsCompareMode ? Compare.Summary
-            : tab.IsSearching ? $"검색 중… {tab.Items.Count:N0}개 찾음"
-            : tab.IsRecursiveSearch ? $"검색 결과 {tab.Items.Count:N0}개"
-            : $"항목 {tab.Items.Count:N0}개";
+            : tab.IsSearching ? L.F("검색 중… {0:N0}개 찾음", tab.Items.Count)
+            : tab.IsRecursiveSearch ? L.F("검색 결과 {0:N0}개", tab.Items.Count)
+            : L.F("항목 {0:N0}개", tab.Items.Count);
 
         var selected = tab.SelectedItems.Where(i => !i.IsPlaceholder).ToList();
         if (selected.Count == 0)
@@ -910,11 +955,11 @@ public sealed partial class MainViewModel : ObservableObject
         {
             var files = selected.Where(i => !i.IsDirectory).ToList();
             SelectionText = files.Count > 0
-                ? $"{selected.Count:N0}개 선택 · {Formatting.Size(files.Sum(f => f.Size))}"
-                : $"{selected.Count:N0}개 선택";
+                ? L.F("{0:N0}개 선택 · {1}", selected.Count, Formatting.Size(files.Sum(f => f.Size)))
+                : L.F("{0:N0}개 선택", selected.Count);
         }
 
-        HiddenText = tab.HiddenCount > 0 ? $"필터로 {tab.HiddenCount:N0}개 숨김" : string.Empty;
+        HiddenText = tab.HiddenCount > 0 ? L.F("필터로 {0:N0}개 숨김", tab.HiddenCount) : string.Empty;
         _ = UpdateFreeSpaceAsync(tab.Path);
     }
 
@@ -934,7 +979,7 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             var free = await Task.Run(() => new DriveInfo(root).AvailableFreeSpace, cts.Token);
-            if (!cts.IsCancellationRequested) FreeSpaceText = $"여유 공간 {Formatting.Size(free)}";
+            if (!cts.IsCancellationRequested) FreeSpaceText = L.F("여유 공간 {0}", Formatting.Size(free));
         }
         catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException or OperationCanceledException)
         {
@@ -962,7 +1007,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             if (move)
             {
-                _undo.Push($"이동 ({created.Count}개)", async () =>
+                _undo.Push(L.F("이동 ({0}개)", created.Count), async () =>
                 {
                     var all = true;
                     foreach (var group in created.GroupBy(i => Path.GetDirectoryName(i.Source)!, StringComparer.OrdinalIgnoreCase))
@@ -977,8 +1022,8 @@ public sealed partial class MainViewModel : ObservableObject
             else
             {
                 var copies = created.Select(i => i.Destination).ToList();
-                _undo.Push($"복사 ({copies.Count}개)", () =>
-                    _transfers.RunIndeterminateAsync($"복사 취소 · {copies.Count:N0}개", destination, () => _ctx.FileOperations.DeleteAsync(copies, permanent: false)));
+                _undo.Push(L.F("복사 ({0}개)", copies.Count), () =>
+                    _transfers.RunIndeterminateAsync(L.F("복사 취소 · {0:N0}개", copies.Count), destination, () => _ctx.FileOperations.DeleteAsync(copies, permanent: false)));
             }
         }
 
@@ -990,13 +1035,13 @@ public sealed partial class MainViewModel : ObservableObject
         var result = await _undo.UndoAsync();
         if (result is null)
         {
-            ShowNotice("실행 취소할 작업이 없습니다.");
+            ShowNotice(L.T("실행 취소할 작업이 없습니다."));
             return;
         }
 
         ShowNotice(result.Value.Succeeded
-            ? $"실행 취소: {result.Value.Description}"
-            : $"실행 취소하지 못했습니다: {result.Value.Description} (항목이 바뀌었거나 휴지통에 없습니다)");
+            ? L.F("실행 취소: {0}", result.Value.Description)
+            : L.F("실행 취소하지 못했습니다: {0} (항목이 바뀌었거나 휴지통에 없습니다)", result.Value.Description));
 
         if (IsCompareMode)
         {
@@ -1062,18 +1107,18 @@ public sealed partial class MainViewModel : ObservableObject
     {
         root = Path.GetPathRoot(root) ?? root;
         var label = root.TrimEnd('\\');
-        if (_transfers.IsBusy && !_ctx.Dialogs.Confirm("진행 중인 파일 작업이 있습니다. 그래도 꺼낼까요?", "장치 꺼내기")) return;
+        if (_transfers.IsBusy && !_ctx.Dialogs.Confirm(L.T("진행 중인 파일 작업이 있습니다. 그래도 꺼낼까요?"), L.T("장치 꺼내기"))) return;
 
         // 이 앱이 드라이브를 잡고 있으면(파일 감시, 미리보기) "사용 중"으로 실패하므로 먼저 놓는다
         Preview.Clear();
         foreach (var tab in Left.Tabs.Concat(Right.Tabs).Where(t => IsOnDrive(t.Path, root)).ToList())
             await tab.NavigateAsync(TabViewModel.ThisPc);
 
-        ShowNotice($"{label} 꺼내는 중…");
+        ShowNotice(L.F("{0} 꺼내는 중…", label));
         var ok = await _drives.EjectAsync(root);
         ShowNotice(ok
-            ? $"{label} 장치를 안전하게 제거할 수 있습니다."
-            : $"{label} 장치를 꺼내지 못했습니다. 다른 프로그램이 사용 중인지 확인하세요.");
+            ? L.F("{0} 장치를 안전하게 제거할 수 있습니다.", label)
+            : L.F("{0} 장치를 꺼내지 못했습니다. 다른 프로그램이 사용 중인지 확인하세요.", label));
         await OnDevicesChangedAsync();
     }
 

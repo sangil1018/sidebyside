@@ -1,3 +1,4 @@
+using SideBySide.Core.Localization;
 namespace SideBySide.Core.FileSystem;
 
 /// <summary>Windows 파일 이름 규칙과 경로 유틸.</summary>
@@ -16,10 +17,10 @@ public static class PathNames
     /// <summary>이름이 유효하지 않으면 사유를, 유효하면 null을 돌려준다.</summary>
     public static string? Validate(string name)
     {
-        if (string.IsNullOrWhiteSpace(name)) return "이름이 비어 있습니다.";
-        if (name.IndexOfAny(InvalidNameChars) >= 0) return "다음 문자는 사용할 수 없습니다: \\ / : * ? \" < > |";
-        if (name.EndsWith('.') || name.EndsWith(' ')) return "이름은 점이나 공백으로 끝날 수 없습니다.";
-        if (ReservedNames.Contains(Path.GetFileNameWithoutExtension(name))) return "예약된 이름입니다.";
+        if (string.IsNullOrWhiteSpace(name)) return L.T("이름이 비어 있습니다.");
+        if (name.IndexOfAny(InvalidNameChars) >= 0) return L.T("다음 문자는 사용할 수 없습니다: \\ / : * ? \" < > |");
+        if (name.EndsWith('.') || name.EndsWith(' ')) return L.T("이름은 점이나 공백으로 끝날 수 없습니다.");
+        if (ReservedNames.Contains(Path.GetFileNameWithoutExtension(name))) return L.T("예약된 이름입니다.");
         return null;
     }
 

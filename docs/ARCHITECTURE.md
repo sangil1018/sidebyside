@@ -69,6 +69,16 @@ SideBySide.App  (WPF, MVVM)        ──▶  SideBySide.Shell (Win32/COM)  ─�
 범위(`CommandScope`): `Global`(창 전체) / `FileList`(파일 목록 포커스 — 텍스트 입력 중 Ctrl+C 등이 입력란으로 가도록) / `Diff`(파일 비교 화면).
 `canExecute`가 false면 키가 처리되지 않고 컨트롤 기본 동작으로 넘어간다 (예: 한 창 모드에서 Tab).
 
+### 화면 문자열 (한국어 / 영어)
+- 원문(한국어)을 그대로 키로 쓴다: C#은 `L.T("새 탭")`, 값이 들어가면 `L.F("항목 {0:N0}개", count)`, XAML은 `Text="{l:T '새 탭'}"` (`xmlns:l="clr-namespace:SideBySide.App.Infrastructure"`).
+- 영어는 `Core/Localization/L.English.cs` 표에 한 줄 추가한다. 없으면 한국어가 그대로 보인다. `LocalizationTests`가 자리표시자({0} 등) 개수가 같은지 검사한다.
+- 언어는 시작할 때 `App.OnStartup`에서 `L.Use(settings.Language)`로 한 번 정한다 (명령 표·XAML이 그 뒤에 읽히므로 바꾸면 다시 시작해야 적용).
+- 문장을 조각으로 이어 붙이지 말 것 (어순이 달라 번역할 수 없다). 경우마다 완성된 문장을 둔다.
+
+### 단축키 변경 (사용자)
+- 기본값은 `CommandRegistry.Defaults`. 사용자가 바꾼 것만 `AppSettings.KeyBindings`(명령 ID → `"Ctrl+Shift+Right"`, 빈 값 = 없음)에 저장하고 `CommandRegistry.ApplyOverrides`가 `All`에 덮어쓴다. 바꾼 명령은 보조 단축키까지 새 키 하나로 대체한다.
+- `CommandHost.BindKeys`가 붙인 바인딩을 기억해 두고 `RebindAll`로 바로 다시 붙인다. 겹침 검사는 `CommandRegistry.Compose` + `ScopesOverlap`(같은 범위이거나 한쪽이 창 전체).
+
 ### 색/테마 변경
 - 색은 `Themes/Tokens.Light.xaml`, `Themes/Tokens.Dark.xaml`에만 정의 (두 파일의 키는 같아야 함)
 - 컨트롤 스타일(`Themes/Controls/*.xaml`)은 `DynamicResource`로만 색을 참조 → `ThemeManager`가 토큰 사전만 교체

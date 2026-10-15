@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.Core.FileSystem;
 
@@ -121,7 +122,7 @@ public sealed class FileTransfer
         var cancelled = false;
         try
         {
-            if (!Directory.Exists(_destination)) throw new DirectoryNotFoundException($"대상 폴더가 없습니다: {_destination}");
+            if (!Directory.Exists(_destination)) throw new DirectoryNotFoundException(L.F("대상 폴더가 없습니다: {0}", _destination));
             foreach (var source in sources) Scan(Path.GetFullPath(source));
             Report(force: true);
 
@@ -132,13 +133,13 @@ public sealed class FileTransfer
                 var isDir = Directory.Exists(source);
                 if (!isDir && !File.Exists(source))
                 {
-                    _errors.Add(new TransferError(source, "원본을 찾을 수 없습니다."));
+                    _errors.Add(new TransferError(source, L.T("원본을 찾을 수 없습니다.")));
                     continue;
                 }
 
                 if (isDir && PathNames.IsSameOrChildOf(_destination, source))
                 {
-                    _errors.Add(new TransferError(source, "폴더를 자기 자신이나 하위 폴더로 옮기거나 복사할 수 없습니다."));
+                    _errors.Add(new TransferError(source, L.T("폴더를 자기 자신이나 하위 폴더로 옮기거나 복사할 수 없습니다.")));
                     continue;
                 }
 
@@ -154,8 +155,8 @@ public sealed class FileTransfer
 
                     // 같은 폴더에 붙여넣기: 탐색기처럼 "이름 - 복사본"
                     target = isDir
-                        ? PathNames.MakeUnique(_destination, name + " - 복사본")
-                        : PathNames.MakeUnique(_destination, Path.GetFileNameWithoutExtension(name) + " - 복사본", Path.GetExtension(name));
+                        ? PathNames.MakeUnique(_destination, name + L.T(" - 복사본"))
+                        : PathNames.MakeUnique(_destination, Path.GetFileNameWithoutExtension(name) + L.T(" - 복사본"), Path.GetExtension(name));
                 }
 
                 var existedBefore = File.Exists(target) || Directory.Exists(target);

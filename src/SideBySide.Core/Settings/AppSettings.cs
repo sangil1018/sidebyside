@@ -5,11 +5,27 @@ using SideBySide.Core.Sessions;
 
 namespace SideBySide.Core.Settings;
 
+/// <summary>화면 언어. 바꾸면 다시 시작할 때 적용된다.</summary>
+public enum AppLanguage
+{
+    Korean,
+    English,
+}
+
 public enum ThemeMode
 {
     System,
     Light,
     Dark,
+}
+
+/// <summary>탐색 창 빠른 실행에 표시할 수 있는 시스템 위치 (앱이 직접 목록을 보여줄 수 없어 Windows로 연다).</summary>
+public enum SystemPlace
+{
+    RecycleBin,
+    ControlPanel,
+    Network,
+    WindowsSettings,
 }
 
 /// <summary>Win 조합으로 SideBySide 창을 앞으로 가져오는 단축키. 셸이 예약하지 않은 조합만 제공한다.</summary>
@@ -60,6 +76,8 @@ public sealed class AppSettings
 
     public ThemeMode Theme { get; set; } = ThemeMode.System;
 
+    public AppLanguage Language { get; set; } = AppLanguage.Korean;
+
     /// <summary>앱이 켜져 있을 때 창을 앞으로 가져오는 전역 단축키.</summary>
     public OpenShortcut OpenShortcut { get; set; } = OpenShortcut.WinAltE;
 
@@ -105,4 +123,10 @@ public sealed class AppSettings
     public bool ShowDifferencesOnly { get; set; }
 
     public List<string> Favorites { get; set; } = [];
+
+    /// <summary>빠른 실행에 표시할 시스템 위치. 기본은 휴지통.</summary>
+    public List<SystemPlace> SystemPlaces { get; set; } = [SystemPlace.RecycleBin];
+
+    /// <summary>사용자가 바꾼 단축키 (명령 ID → "Ctrl+Shift+E" 형식, 빈 문자열 = 단축키 없음). 없는 명령은 기본값.</summary>
+    public Dictionary<string, string> KeyBindings { get; set; } = [];
 }

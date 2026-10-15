@@ -3,6 +3,7 @@ using SideBySide.App.Infrastructure;
 using SideBySide.App.Services;
 using SideBySide.Core.Compare;
 using SideBySide.Core.Diff;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App.ViewModels;
 
@@ -135,9 +136,9 @@ public sealed partial class FileDiffViewModel : ObservableObject
                 var equal = await FileContentComparer.AreEqualAsync(leftPath, rightPath);
                 vm.IsBinary = true;
                 vm.Message = equal
-                    ? "바이너리 파일 — 두 파일의 내용이 같습니다."
-                    : $"바이너리 파일 — 내용이 다릅니다. ({Formatting.Size(left.Size)} / {Formatting.Size(right.Size)})";
-                vm.Summary = equal ? "같음" : "다름";
+                    ? L.T("바이너리 파일 — 두 파일의 내용이 같습니다.")
+                    : L.F("바이너리 파일 — 내용이 다릅니다. ({0} / {1})", Formatting.Size(left.Size), Formatting.Size(right.Size));
+                vm.Summary = equal ? L.T("같음") : L.T("다름");
                 return vm;
             }
 
@@ -222,7 +223,7 @@ public sealed partial class FileDiffViewModel : ObservableObject
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _dialogs.ShowError("저장하지 못했습니다.\n" + ex.Message);
+            _dialogs.ShowError(L.T("저장하지 못했습니다.\n") + ex.Message);
             return false;
         }
     }
@@ -234,7 +235,7 @@ public sealed partial class FileDiffViewModel : ObservableObject
         if (IsEditing) CommitEdit();
         if (!_document.LeftDirty && !_document.RightDirty) return true;
 
-        var answer = _dialogs.AskYesNoCancel("변경 내용을 저장할까요?", "파일 비교");
+        var answer = _dialogs.AskYesNoCancel(L.T("변경 내용을 저장할까요?"), L.T("파일 비교"));
         return answer switch
         {
             true => Save(),
@@ -310,8 +311,8 @@ public sealed partial class FileDiffViewModel : ObservableObject
         LeftDirty = _document.LeftDirty;
         RightDirty = _document.RightDirty;
         Summary = result.AreEqual
-            ? "같음"
-            : $"차이 {result.Hunks.Count}곳";
+            ? L.T("같음")
+            : L.F("차이 {0}곳", result.Hunks.Count);
         OnPropertyChanged(nameof(CanEdit));
     }
 
@@ -334,6 +335,6 @@ public sealed partial class FileDiffViewModel : ObservableObject
 
     private static string Describe(TextFileContent content)
         => content.IsBinary
-            ? $"바이너리 · {Formatting.Size(content.Size)}"
-            : $"{content.Format.EncodingName} · {content.Format.NewLineName} · {content.Lines.Count:N0}줄";
+            ? L.F("바이너리 · {0}", Formatting.Size(content.Size))
+            : L.F("{0} · {1} · {2:N0}줄", content.Format.EncodingName, content.Format.NewLineName, content.Lines.Count);
 }

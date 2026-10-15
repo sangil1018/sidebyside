@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Threading;
 using SideBySide.App.ViewModels;
 using SideBySide.Core.FileSystem;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App.Services;
 
@@ -21,7 +22,7 @@ public sealed class FileTransferService(IDialogService dialogs)
     public async Task<TransferResult> TransferAsync(TransferKind kind, IReadOnlyList<string> sources, string destination)
     {
         using var cts = new CancellationTokenSource();
-        var title = kind == TransferKind.Copy ? "복사" : "이동";
+        var title = kind == TransferKind.Copy ? L.T("복사") : L.T("이동");
         var op = new OperationViewModel($"{title} → {Path.GetFileName(Path.TrimEndingDirectorySeparator(destination))}", destination, cts);
         Operations.Add(op);
 
@@ -52,8 +53,9 @@ public sealed class FileTransferService(IDialogService dialogs)
         if (result.Errors.Count > 0)
         {
             var lines = result.Errors.Take(10).Select(e => $"• {Path.GetFileName(e.Path)}: {e.Message}");
-            var more = result.Errors.Count > 10 ? $"\n…외 {result.Errors.Count - 10}개" : string.Empty;
-            dialogs.ShowError($"{result.Errors.Count}개 항목을 {title}하지 못했습니다.\n\n{string.Join("\n", lines)}{more}");
+            var more = result.Errors.Count > 10 ? L.F("\n…외 {0}개", result.Errors.Count - 10) : string.Empty;
+            var format = kind == TransferKind.Copy ? "{0}개 항목을 복사하지 못했습니다.\n\n{1}{2}" : "{0}개 항목을 이동하지 못했습니다.\n\n{1}{2}";
+            dialogs.ShowError(L.F(format, result.Errors.Count, string.Join("\n", lines), more));
         }
 
         return result;
@@ -75,16 +77,16 @@ public sealed class FileTransferService(IDialogService dialogs)
             _ = RemoveLaterAsync(op);
         }
 
-        op.Details = ok ? "완료" : "취소되었거나 일부 실패";
+        op.Details = ok ? L.T("완료") : L.T("취소되었거나 일부 실패");
         return ok;
     }
 
     private static string Summary(string title, TransferResult r)
     {
-        if (r.Cancelled) return "취소됨";
-        var text = $"{title} 완료 · {r.FilesProcessed - r.Skipped:N0}개";
-        if (r.Skipped > 0) text += $" · 건너뜀 {r.Skipped:N0}";
-        if (r.Errors.Count > 0) text += $" · 실패 {r.Errors.Count:N0}";
+        if (r.Cancelled) return L.T("취소됨");
+        var text = L.F("{0} 완료 · {1:N0}개", title, r.FilesProcessed - r.Skipped);
+        if (r.Skipped > 0) text += L.F(" · 건너뜀 {0:N0}", r.Skipped);
+        if (r.Errors.Count > 0) text += L.F(" · 실패 {0:N0}", r.Errors.Count);
         return text;
     }
 

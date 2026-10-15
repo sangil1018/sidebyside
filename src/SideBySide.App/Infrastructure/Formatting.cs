@@ -1,10 +1,11 @@
 using System.Globalization;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App.Infrastructure;
 
 public static class Formatting
 {
-    private static readonly string[] Units = ["바이트", "KB", "MB", "GB", "TB"];
+    private static readonly string[] Units = [L.T("바이트"), "KB", "MB", "GB", "TB"];
 
     /// <summary>탐색기 목록 형식: 항상 KB 단위, 올림, 천 단위 구분 ("1,234 KB").</summary>
     public static string SizeInKb(long bytes)

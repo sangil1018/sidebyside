@@ -7,6 +7,7 @@ using System.Windows.Media.Imaging;
 using SideBySide.Shell.Abstractions;
 using SideBySide.Shell.Interop;
 using static SideBySide.Shell.Interop.NativeMethods;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.Shell.Services;
 
@@ -84,7 +85,7 @@ public sealed class ShellIconProvider : IIconProvider, IDisposable
             var info = default(SHFILEINFO);
             var attrs = isDirectory ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
             SHGetFileInfo(isDirectory ? "folder" : "file" + key, attrs, ref info, (uint)Marshal.SizeOf<SHFILEINFO>(), SHGFI_TYPENAME | SHGFI_USEFILEATTRIBUTES);
-            return string.IsNullOrEmpty(info.szTypeName) ? (key.Length > 1 ? key[1..].ToUpperInvariant() + " 파일" : "파일") : info.szTypeName;
+            return string.IsNullOrEmpty(info.szTypeName) ? (key.Length > 1 ? key[1..].ToUpperInvariant() + L.T(" 파일") : L.T("파일")) : info.szTypeName;
         });
     }
 

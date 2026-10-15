@@ -9,6 +9,7 @@ using SideBySide.App.ViewModels;
 using SideBySide.Core.Settings;
 using SideBySide.Shell.Abstractions;
 using SideBySide.Shell.Services;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App;
 
@@ -53,6 +54,8 @@ public partial class App : Application
         _services = ConfigureServices();
 
         var settings = _services.GetRequiredService<AppSettings>();
+        L.Use(settings.Language); // 다른 화면 문자열보다 먼저 (명령 표·XAML이 이 값을 읽는다)
+        CommandRegistry.ApplyOverrides(settings.KeyBindings);
         _services.GetRequiredService<ThemeManager>().Apply(settings.Theme);
 
         var window = _services.GetRequiredService<MainWindow>();
@@ -115,7 +118,7 @@ public partial class App : Application
     {
         // 예기치 않은 오류로 창이 닫혀 작업을 잃지 않도록 기록·알리고 계속 실행
         ErrorLog.Write(e.Exception);
-        MessageBox.Show(e.Exception.Message, "SideBySide 오류", MessageBoxButton.OK, MessageBoxImage.Error);
+        MessageBox.Show(e.Exception.Message, L.T("SideBySide 오류"), MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
     }
 }

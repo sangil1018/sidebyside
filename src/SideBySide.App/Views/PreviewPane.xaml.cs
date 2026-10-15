@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using SideBySide.App.ViewModels;
 using SideBySide.Shell.Preview;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App.Views;
 
@@ -41,8 +42,8 @@ public partial class PreviewPane : UserControl
         var kind = _vm?.Kind ?? PreviewKind.None;
         Placeholder.Text = kind switch
         {
-            PreviewKind.None => _vm?.Title.Length > 0 ? string.Empty : "미리 볼 파일을 선택하세요.",
-            PreviewKind.Unsupported => "이 파일은 미리 볼 수 없습니다.",
+            PreviewKind.None => _vm?.Title.Length > 0 ? string.Empty : L.T("미리 볼 파일을 선택하세요."),
+            PreviewKind.Unsupported => L.T("이 파일은 미리 볼 수 없습니다."),
             _ => string.Empty,
         };
 
