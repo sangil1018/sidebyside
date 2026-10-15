@@ -1,6 +1,7 @@
 <UserControl x:Class="SideBySide.App.Views.NavigationSidebar"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="clr-namespace:SideBySide.App.Infrastructure"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:SideBySide.App.ViewModels"
@@ -22,7 +23,7 @@
         <DockPanel Grid.Column="1">
           <!-- 안전하게 제거 (USB 장치) -->
           <Button DockPanel.Dock="Right" Style="{StaticResource Button.SmallIcon}" Content="⏏" FontFamily="Segoe UI Symbol"
-                  FontSize="12" Margin="4,-3,-6,-3" ToolTip="안전하게 제거 (꺼내기)" Click="OnEjectClick"
+                  FontSize="12" Margin="4,-3,-6,-3" ToolTip="{l:T '안전하게 제거 (꺼내기)'}" Click="OnEjectClick"
                   Visibility="{Binding CanEject, Converter={StaticResource BoolToVis}}" />
           <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
         </DockPanel>
@@ -45,10 +46,10 @@
   <Border Background="{DynamicResource Brush.SidebarBg}">
     <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
       <StackPanel Margin="0,4,0,12">
-        <TextBlock Style="{StaticResource Text.SectionHeader}" Text="빠른 실행" />
+        <TextBlock Style="{StaticResource Text.SectionHeader}" Text="{l:T '빠른 실행'}" />
         <ListBox Style="{StaticResource ListBox.Plain}" ItemsSource="{Binding Sidebar.QuickAccess}"
                  ItemTemplate="{StaticResource NavItem}" PreviewMouseUp="OnItemMouseUp" Focusable="False" />
-        <TextBlock Style="{StaticResource Text.SectionHeader}" Text="내 PC" Cursor="Hand" MouseLeftButtonUp="OnThisPcClick" />
+        <TextBlock Style="{StaticResource Text.SectionHeader}" Text="{l:T '내 PC'}" Cursor="Hand" MouseLeftButtonUp="OnThisPcClick" />
         <ListBox Style="{StaticResource ListBox.Plain}" ItemsSource="{Binding Sidebar.Drives}"
                  ItemTemplate="{StaticResource NavItem}" PreviewMouseUp="OnItemMouseUp" Focusable="False" />
       </StackPanel>

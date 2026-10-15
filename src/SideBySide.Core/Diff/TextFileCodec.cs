@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.Core.Diff;
 
@@ -41,7 +42,7 @@ public static class TextFileCodec
     {
         var info = new FileInfo(path);
         if (info.Length > maxBytes)
-            throw new IOException($"파일이 너무 큽니다 ({info.Length / (1024 * 1024)} MB). 텍스트 비교는 {maxBytes / (1024 * 1024)} MB까지 지원합니다.");
+            throw new IOException(L.F("파일이 너무 큽니다 ({0} MB). 텍스트 비교는 {1} MB까지 지원합니다.", info.Length / (1024 * 1024), maxBytes / (1024 * 1024)));
 
         var bytes = File.ReadAllBytes(path);
         return Decode(bytes);

@@ -1,7 +1,8 @@
 <Window x:Class="SideBySide.App.Dialogs.ConflictDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Style="{StaticResource Window.Dialog}" Title="같은 이름이 있습니다" Width="520">
+        xmlns:l="clr-namespace:SideBySide.App.Infrastructure"
+        Style="{StaticResource Window.Dialog}" Title="{l:T '같은 이름이 있습니다'}" Width="520">
   <StackPanel>
     <StackPanel Margin="20,18,20,16">
       <TextBlock x:Name="Headline" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,12" />
@@ -14,20 +15,20 @@
           <RowDefinition Height="Auto" />
           <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <TextBlock Style="{StaticResource Text.Secondary}" Text="옮길 항목" Margin="0,0,16,6" />
+        <TextBlock Style="{StaticResource Text.Secondary}" Text="{l:T '옮길 항목'}" Margin="0,0,16,6" />
         <TextBlock x:Name="SourceInfo" Grid.Column="1" Margin="0,0,0,6" />
-        <TextBlock Grid.Row="1" Style="{StaticResource Text.Secondary}" Text="있는 항목" Margin="0,0,16,0" />
+        <TextBlock Grid.Row="1" Style="{StaticResource Text.Secondary}" Text="{l:T '있는 항목'}" Margin="0,0,16,0" />
         <TextBlock x:Name="TargetInfo" Grid.Row="1" Grid.Column="1" />
       </Grid>
-      <CheckBox x:Name="ApplyAllBox" Content="나머지 충돌에도 모두 적용" Margin="0,16,0,0" />
+      <CheckBox x:Name="ApplyAllBox" Content="{l:T '나머지 충돌에도 모두 적용'}" Margin="0,16,0,0" />
     </StackPanel>
     <Border Style="{StaticResource Dialog.Footer}">
       <DockPanel>
-        <Button DockPanel.Dock="Left" Style="{StaticResource Button.Standard}" Content="작업 취소" IsCancel="True" Click="OnCancel" />
+        <Button DockPanel.Dock="Left" Style="{StaticResource Button.Standard}" Content="{l:T '작업 취소'}" IsCancel="True" Click="OnCancel" />
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-          <Button Style="{StaticResource Button.Standard}" Content="건너뛰기" Margin="0,0,8,0" Click="OnSkip" />
-          <Button Style="{StaticResource Button.Standard}" Content="둘 다 유지" Margin="0,0,8,0" Click="OnKeepBoth" />
-          <Button x:Name="OverwriteButton" Style="{StaticResource Button.Primary}" Content="덮어쓰기" IsDefault="True" Click="OnOverwrite" />
+          <Button Style="{StaticResource Button.Standard}" Content="{l:T '건너뛰기'}" Margin="0,0,8,0" Click="OnSkip" />
+          <Button Style="{StaticResource Button.Standard}" Content="{l:T '둘 다 유지'}" Margin="0,0,8,0" Click="OnKeepBoth" />
+          <Button x:Name="OverwriteButton" Style="{StaticResource Button.Primary}" Content="{l:T '덮어쓰기'}" IsDefault="True" Click="OnOverwrite" />
         </StackPanel>
       </DockPanel>
     </Border>

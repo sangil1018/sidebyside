@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using SideBySide.App.ViewModels;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App.Views;
 
@@ -20,7 +21,7 @@ public partial class AddressBar : UserControl
     public void BeginEdit()
     {
         if (_tab is null) return;
-        Editor.Text = _tab.IsThisPc ? "내 PC" : _tab.Path;
+        Editor.Text = _tab.IsThisPc ? L.T("내 PC") : _tab.Path;
         Editor.Visibility = Visibility.Visible;
         CrumbScroll.Visibility = Visibility.Hidden;
         Editor.Focus();
@@ -49,7 +50,7 @@ public partial class AddressBar : UserControl
     private void Rebuild()
     {
         EndEdit();
-        var segments = new List<Crumb> { new("내 PC", TabViewModel.ThisPc, false) };
+        var segments = new List<Crumb> { new(L.T("내 PC"), TabViewModel.ThisPc, false) };
         var path = _tab?.Path ?? string.Empty;
         if (path.Length > 0)
         {

@@ -8,6 +8,7 @@ using SideBySide.App.ViewModels;
 using SideBySide.App.Views;
 using SideBySide.Core.Settings;
 using SideBySide.Shell.Services;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App;
 
@@ -157,7 +158,7 @@ public partial class MainWindow : Window
             }
             catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
             {
-                ViewModel.ShowNotice("단축키 백그라운드 실행을 시작하지 못했습니다: " + ex.Message);
+                ViewModel.ShowNotice(L.T("단축키 백그라운드 실행을 시작하지 못했습니다: ") + ex.Message);
             }
 
             return;
@@ -165,7 +166,7 @@ public partial class MainWindow : Window
 
         var (modifiers, key) = HotkeyAgent.KeysFor(_settings.OpenShortcut);
         if (!GlobalHotkey.Register(hwnd, modifiers, key))
-            ViewModel.ShowNotice("창 열기 단축키를 등록하지 못했습니다. 다른 프로그램이 같은 키를 쓰고 있을 수 있습니다.");
+            ViewModel.ShowNotice(L.T("창 열기 단축키를 등록하지 못했습니다. 다른 프로그램이 같은 키를 쓰고 있을 수 있습니다."));
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -251,7 +252,7 @@ public partial class MainWindow : Window
         // WindowChrome 창은 최대화 시 화면 밖으로 테두리만큼 넘치므로 안쪽 여백으로 보정
         RootBorder.Margin = maximized ? SystemParameters.WindowResizeBorderThickness : new Thickness(0);
         MaxButton.Content = maximized ? "" : "";
-        MaxButton.ToolTip = maximized ? "이전 크기로 복원" : "최대화";
+        MaxButton.ToolTip = maximized ? L.T("이전 크기로 복원") : L.T("최대화");
     }
 
     private void OnMinimize(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;

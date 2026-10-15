@@ -2,7 +2,9 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SideBySide.App.Infrastructure;
 using SideBySide.App.Services;
+using SideBySide.Core.Settings;
 using SideBySide.Shell.Abstractions;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App.ViewModels;
 
@@ -25,6 +27,9 @@ public sealed class SidebarItem
 
     /// <summary>USB 장치·광학 드라이브처럼 안전하게 제거할 수 있는 드라이브.</summary>
     public bool CanEject { get; init; }
+
+    /// <summary>휴지통 같은 시스템 위치: 앱 안에서 탐색하지 않고 Windows로 연다.</summary>
+    public bool IsSystemPlace { get; init; }
 }
 
 /// <summary>왼쪽 탐색 창: 빠른 실행(알려진 폴더 + 고정 항목)과 드라이브 목록.</summary>
@@ -68,7 +73,7 @@ public sealed partial class SidebarViewModel : ObservableObject
                 if (d.IsReady && d.TotalSize > 0)
                 {
                     usage = 1 - (double)d.AvailableFreeSpace / d.TotalSize;
-                    details = $"{Formatting.Size(d.AvailableFreeSpace)} 남음";
+                    details = L.F("{0} 남음", Formatting.Size(d.AvailableFreeSpace));
                 }
             }
             catch (IOException)
@@ -99,24 +104,42 @@ public sealed partial class SidebarViewModel : ObservableObject
         foreach (var item in items) Drives.Add(item);
     }
 
+    /// <summary>표시할 수 있는 시스템 위치: (종류, 이름, 셸 대상, 글리프).</summary>
+    public static IReadOnlyList<(SystemPlace Place, string Name, string Target, string Glyph)> SystemPlaces { get; } =
+    [
+        (SystemPlace.RecycleBin, L.T("휴지통"), "shell:RecycleBinFolder", "\uE74D"),
+        (SystemPlace.ControlPanel, L.T("제어판"), "shell:ControlPanelFolder", "\uE912"),
+        (SystemPlace.Network, L.T("네트워크"), "shell:NetworkPlacesFolder", "\uE968"),
+        (SystemPlace.WindowsSettings, L.T("Windows 설정"), "ms-settings:", "\uE713"),
+    ];
+
+    /// <summary>설정이 바뀌면 빠른 실행을 다시 만든다.</summary>
+    public void Refresh() => RebuildQuickAccess();
+
     private void RebuildQuickAccess()
     {
         QuickAccess.Clear();
         var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         var known = new (string Name, string Path, string Glyph)[]
         {
-            ("바탕 화면", Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), ""),
-            ("다운로드", Path.Combine(profile, "Downloads"), ""),
-            ("문서", Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), ""),
-            ("사진", Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), ""),
-            ("음악", Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), ""),
-            ("동영상", Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), ""),
+            (L.T("바탕 화면"), Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), ""),
+            (L.T("다운로드"), Path.Combine(profile, "Downloads"), ""),
+            (L.T("문서"), Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), ""),
+            (L.T("사진"), Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), ""),
+            (L.T("음악"), Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), ""),
+            (L.T("동영상"), Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), ""),
         };
 
         foreach (var (name, path, glyph) in known)
         {
             if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
                 QuickAccess.Add(new SidebarItem { Name = name, Path = path, Glyph = glyph });
+        }
+
+        foreach (var (place, name, target, glyph) in SystemPlaces)
+        {
+            if (_ctx.Settings.SystemPlaces.Contains(place))
+                QuickAccess.Add(new SidebarItem { Name = name, Path = target, Glyph = glyph, IsSystemPlace = true });
         }
 
         foreach (var fav in _ctx.Settings.Favorites)

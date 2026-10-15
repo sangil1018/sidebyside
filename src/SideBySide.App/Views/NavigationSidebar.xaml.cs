@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using SideBySide.App.Infrastructure;
 using SideBySide.App.ViewModels;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App.Views;
 
@@ -24,6 +25,13 @@ public partial class NavigationSidebar : UserControl
         // 꺼내기 버튼 클릭은 항목 열기로 처리하지 않는다
         if (VisualTree.FindAncestor<Button>(e.OriginalSource) is not null) return;
         if (Main is null || VisualTree.FindAncestor<ListBoxItem>(e.OriginalSource)?.DataContext is not SidebarItem item) return;
+
+        if (item.IsSystemPlace)
+        {
+            if (e.ChangedButton is MouseButton.Left or MouseButton.Middle) Main.OpenSystemPlace(item.Path);
+            e.Handled = true;
+            return;
+        }
 
         switch (e.ChangedButton)
         {
@@ -47,19 +55,19 @@ public partial class NavigationSidebar : UserControl
     {
         if (Main is not { } main) return;
         var menu = new ContextMenu();
-        menu.Items.Add(Item("열기", () => main.NavigateActive(item.Path)));
-        menu.Items.Add(Item("새 탭에서 열기", () => main.ActivePane.NewTab(item.Path)));
-        if (main.IsRightPaneVisible) menu.Items.Add(Item("반대쪽 창에서 열기", () => _ = main.OtherPane.ActiveTab.NavigateAsync(item.Path)));
+        menu.Items.Add(Item(L.T("열기"), () => main.NavigateActive(item.Path)));
+        menu.Items.Add(Item(L.T("새 탭에서 열기"), () => main.ActivePane.NewTab(item.Path)));
+        if (main.IsRightPaneVisible) menu.Items.Add(Item(L.T("반대쪽 창에서 열기"), () => _ = main.OtherPane.ActiveTab.NavigateAsync(item.Path)));
         if (item.CanEject)
         {
             menu.Items.Add(new Separator());
-            menu.Items.Add(Item("꺼내기 (안전하게 제거)", () => _ = main.EjectAsync(item.Path)));
+            menu.Items.Add(Item(L.T("꺼내기 (안전하게 제거)"), () => _ = main.EjectAsync(item.Path)));
         }
 
         if (item.IsPinned)
         {
             menu.Items.Add(new Separator());
-            menu.Items.Add(Item("고정 해제", () => main.Sidebar.Unpin(item.Path)));
+            menu.Items.Add(Item(L.T("고정 해제"), () => main.Sidebar.Unpin(item.Path)));
         }
 
         menu.IsOpen = true;

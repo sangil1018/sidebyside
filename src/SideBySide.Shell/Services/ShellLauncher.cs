@@ -17,6 +17,15 @@ public sealed class ShellLauncher(IOwnerWindow owner) : ILauncher
         Process.Start(psi);
     }
 
+    public void OpenShellPlace(string target)
+    {
+        // explorer.exe에 직접 넘기면 폴더 열기 동사(기본 파일 관리자 설정)를 거치지 않아 항상 탐색기로 열린다
+        var psi = target.StartsWith("ms-settings:", StringComparison.OrdinalIgnoreCase)
+            ? new ProcessStartInfo(target) { UseShellExecute = true }
+            : new ProcessStartInfo("explorer.exe", target) { UseShellExecute = false };
+        Process.Start(psi)?.Dispose();
+    }
+
     public void OpenWith(string path)
         => Process.Start(new ProcessStartInfo("rundll32.exe", $"shell32.dll,OpenAs_RunDLL {path}") { UseShellExecute = false });
 

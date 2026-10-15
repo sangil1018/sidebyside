@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using SideBySide.Core.FileSystem;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.Core.Rename;
 
@@ -44,7 +45,7 @@ public static partial class BatchRenamer
         if (options.UseRegex && options.Find.Length > 0)
         {
             try { regex = new Regex(options.Find, options.MatchCase ? RegexOptions.None : RegexOptions.IgnoreCase); }
-            catch (ArgumentException ex) { regexError = "정규식 오류: " + ex.Message; }
+            catch (ArgumentException ex) { regexError = L.T("정규식 오류: ") + ex.Message; }
         }
 
         var result = new List<RenamePreview>(paths.Count);
@@ -93,7 +94,7 @@ public static partial class BatchRenamer
         var todo = items.Where(i => i.IsChanged).ToList();
         if (todo.Count == 0) return;
         if (items.Any(i => i.Error is not null))
-            throw new InvalidOperationException("오류가 있는 항목이 있어 적용할 수 없습니다.");
+            throw new InvalidOperationException(L.T("오류가 있는 항목이 있어 적용할 수 없습니다."));
 
         var done = new List<(string From, string To)>();
         try
@@ -110,7 +111,7 @@ public static partial class BatchRenamer
             foreach (var (item, temp) in temps)
             {
                 if (File.Exists(item.NewPath) || Directory.Exists(item.NewPath))
-                    throw new IOException($"'{item.NewName}' 이(가) 이미 있습니다.");
+                    throw new IOException(L.F("'{0}' 이(가) 이미 있습니다.", item.NewName));
                 Move(temp, item.NewPath);
                 done.Add((temp, item.NewPath));
             }
@@ -123,7 +124,7 @@ public static partial class BatchRenamer
                 catch (Exception rollbackEx) when (rollbackEx is IOException or UnauthorizedAccessException) { /* 최선을 다해 복구 */ }
             }
 
-            throw new BatchRenameException("이름 바꾸기에 실패하여 원래대로 되돌렸습니다: " + ex.Message, ex);
+            throw new BatchRenameException(L.T("이름 바꾸기에 실패하여 원래대로 되돌렸습니다: ") + ex.Message, ex);
         }
     }
 
@@ -137,11 +138,11 @@ public static partial class BatchRenamer
         return items.Select(item =>
         {
             if (item.Error is not null) return item;
-            if (seen[item.NewPath] > 1) return item with { Error = "다른 항목과 이름이 겹칩니다." };
+            if (seen[item.NewPath] > 1) return item with { Error = L.T("다른 항목과 이름이 겹칩니다.") };
             if (item.IsChanged && !sources.Contains(item.NewPath)
                 && !string.Equals(item.NewPath, item.OriginalPath, StringComparison.OrdinalIgnoreCase)
                 && (File.Exists(item.NewPath) || Directory.Exists(item.NewPath)))
-                return item with { Error = "같은 이름의 항목이 이미 있습니다." };
+                return item with { Error = L.T("같은 이름의 항목이 이미 있습니다.") };
             return item;
         }).ToList();
     }

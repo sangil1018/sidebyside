@@ -4,6 +4,7 @@ using System.Windows.Interop;
 using Microsoft.Win32;
 using SideBySide.Core.Settings;
 using SideBySide.Shell.Services;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App.Services;
 
@@ -152,5 +153,5 @@ public static class HotkeyAgent
         }
     }
 
-    private static string ExecutablePath => Environment.ProcessPath ?? throw new InvalidOperationException("실행 파일 경로를 찾을 수 없습니다.");
+    private static string ExecutablePath => Environment.ProcessPath ?? throw new InvalidOperationException(L.T("실행 파일 경로를 찾을 수 없습니다."));
 }

@@ -1,6 +1,7 @@
 <Window x:Class="SideBySide.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="clr-namespace:SideBySide.App.Infrastructure"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:cmd="clr-namespace:SideBySide.App.Commands"
@@ -66,13 +67,13 @@
           <Border Background="{DynamicResource Brush.Hover}" CornerRadius="5" Padding="2"
                   ToolTip="{cmd:Tip ToggleDualPane}">
             <StackPanel Orientation="Horizontal">
-              <RadioButton Style="{StaticResource Radio.Segment}" Content="한 창" GroupName="Panes"
+              <RadioButton Style="{StaticResource Radio.Segment}" Content="{l:T '한 창'}" GroupName="Panes"
                            IsChecked="{Binding IsDualPane, Converter={StaticResource InverseBool}}" />
-              <RadioButton Style="{StaticResource Radio.Segment}" Content="두 창" GroupName="Panes"
+              <RadioButton Style="{StaticResource Radio.Segment}" Content="{l:T '두 창'}" GroupName="Panes"
                            IsChecked="{Binding IsDualPane}" />
             </StackPanel>
           </Border>
-          <ToggleButton Style="{StaticResource Button.Ghost}" Margin="6,0,0,0" Content="비교"
+          <ToggleButton Style="{StaticResource Button.Ghost}" Margin="6,0,0,0" Content="{l:T '비교'}"
                         IsChecked="{Binding IsCompareMode, Mode=OneWay}"
                         Command="{cmd:Command ToggleCompare}" ToolTip="{cmd:Tip ToggleCompare}" />
         </StackPanel>
@@ -84,9 +85,9 @@
         </StackPanel>
 
         <StackPanel Grid.Column="4" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
-          <Button Style="{StaticResource Button.Caption}" Content="&#xE921;" Click="OnMinimize" ToolTip="최소화" />
-          <Button x:Name="MaxButton" Style="{StaticResource Button.Caption}" Content="&#xE922;" Click="OnMaximize" ToolTip="최대화" />
-          <Button Style="{StaticResource Button.CaptionClose}" Content="&#xE8BB;" Click="OnClose" ToolTip="닫기" />
+          <Button Style="{StaticResource Button.Caption}" Content="&#xE921;" Click="OnMinimize" ToolTip="{l:T '최소화'}" />
+          <Button x:Name="MaxButton" Style="{StaticResource Button.Caption}" Content="&#xE922;" Click="OnMaximize" ToolTip="{l:T '최대화'}" />
+          <Button Style="{StaticResource Button.CaptionClose}" Content="&#xE8BB;" Click="OnClose" ToolTip="{l:T '닫기'}" />
         </StackPanel>
       </Grid>
 
@@ -94,10 +95,10 @@
       <Border Grid.Row="1" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1" Padding="8,4">
         <DockPanel LastChildFill="False">
           <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
-            <Button x:Name="NewButton" Style="{StaticResource Button.Ghost}" Click="OnNewMenu" ToolTip="새로 만들기">
+            <Button x:Name="NewButton" Style="{StaticResource Button.Ghost}" Click="OnNewMenu" ToolTip="{l:T '새로 만들기'}">
               <StackPanel Orientation="Horizontal">
                 <TextBlock Style="{StaticResource Glyph}" Text="&#xE710;" Margin="0,0,6,0" />
-                <TextBlock Text="새로 만들기" />
+                <TextBlock Text="{l:T '새로 만들기'}" />
                 <TextBlock Style="{StaticResource Glyph}" Text="&#xE70D;" FontSize="9" Margin="6,0,0,0" />
               </StackPanel>
             </Button>
@@ -118,26 +119,26 @@
               <Rectangle Width="1" Margin="6,6" Fill="{DynamicResource Brush.Border}" />
               <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command CopyToRight}" ToolTip="{cmd:Tip CopyToRight}">
                 <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="복사" Margin="0,0,6,0" />
+                  <TextBlock Text="{l:T '복사'}" Margin="0,0,6,0" />
                   <TextBlock Style="{StaticResource Glyph}" Text="&#xE72A;" FontSize="12" />
                 </StackPanel>
               </Button>
               <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command CopyToLeft}" ToolTip="{cmd:Tip CopyToLeft}">
                 <StackPanel Orientation="Horizontal">
                   <TextBlock Style="{StaticResource Glyph}" Text="&#xE72B;" FontSize="12" Margin="0,0,6,0" />
-                  <TextBlock Text="복사" />
+                  <TextBlock Text="{l:T '복사'}" />
                 </StackPanel>
               </Button>
               <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command MoveToRight}" ToolTip="{cmd:Tip MoveToRight}">
                 <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="이동" Margin="0,0,6,0" />
+                  <TextBlock Text="{l:T '이동'}" Margin="0,0,6,0" />
                   <TextBlock Style="{StaticResource Glyph}" Text="&#xE72A;" FontSize="12" />
                 </StackPanel>
               </Button>
               <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command MoveToLeft}" ToolTip="{cmd:Tip MoveToLeft}">
                 <StackPanel Orientation="Horizontal">
                   <TextBlock Style="{StaticResource Glyph}" Text="&#xE72B;" FontSize="12" Margin="0,0,6,0" />
-                  <TextBlock Text="이동" />
+                  <TextBlock Text="{l:T '이동'}" />
                 </StackPanel>
               </Button>
             </StackPanel>
@@ -145,15 +146,15 @@
             <!-- 비교 모드 도구 -->
             <StackPanel Orientation="Horizontal" Visibility="{Binding IsCompareMode, Converter={StaticResource BoolToVis}}">
               <Rectangle Width="1" Margin="6,6" Fill="{DynamicResource Brush.Border}" />
-              <ComboBox Width="118" Margin="2,0" VerticalAlignment="Center" ToolTip="비교 기준"
+              <ComboBox Width="118" Margin="2,0" VerticalAlignment="Center" ToolTip="{l:T '비교 기준'}"
                         ItemsSource="{Binding Source={x:Static vm:CompareViewModel.Methods}}"
                         SelectedItem="{Binding Compare.Method}">
                 <ComboBox.ItemTemplate>
                   <DataTemplate>
-                    <TextBlock x:Name="T" Text="크기·날짜" />
+                    <TextBlock x:Name="T" Text="{l:T '크기·날짜'}" />
                     <DataTemplate.Triggers>
                       <DataTrigger Binding="{Binding}" Value="{x:Static compare:CompareMethod.Content}">
-                        <Setter TargetName="T" Property="Text" Value="내용 (바이트)" />
+                        <Setter TargetName="T" Property="Text" Value="{l:T '내용 (바이트)'}" />
                       </DataTrigger>
                     </DataTemplate.Triggers>
                   </DataTemplate>
@@ -163,27 +164,27 @@
                             ToolTip="{cmd:Tip ToggleDifferencesOnly}" Margin="2,0">
                 <StackPanel Orientation="Horizontal">
                   <TextBlock Style="{StaticResource Glyph}" Text="&#xE71C;" Margin="0,0,6,0" />
-                  <TextBlock Text="차이만" />
+                  <TextBlock Text="{l:T '차이만'}" />
                 </StackPanel>
               </ToggleButton>
               <Button Style="{StaticResource Button.Icon}" Content="&#xE74B;" Command="{cmd:Command NextDifference}" ToolTip="{cmd:Tip NextDifference}" />
               <Button Style="{StaticResource Button.Icon}" Content="&#xE74A;" Command="{cmd:Command PrevDifference}" ToolTip="{cmd:Tip PrevDifference}" />
-              <ToggleButton x:Name="CompareOptionsButton" Style="{StaticResource Button.Icon}" Content="&#xE713;" ToolTip="비교 옵션" />
+              <ToggleButton x:Name="CompareOptionsButton" Style="{StaticResource Button.Icon}" Content="&#xE713;" ToolTip="{l:T '비교 옵션'}" />
               <Popup PlacementTarget="{Binding ElementName=CompareOptionsButton}" Placement="Bottom" StaysOpen="False"
                      AllowsTransparency="True" IsOpen="{Binding IsChecked, ElementName=CompareOptionsButton}">
                 <Border Background="{DynamicResource Brush.Popup}" BorderBrush="{DynamicResource Brush.BorderStrong}"
                         BorderThickness="1" CornerRadius="6" Padding="14,12" Margin="0,4,0,0" Width="280">
                   <StackPanel>
-                    <TextBlock Text="비교 옵션" FontWeight="SemiBold" Margin="0,0,0,10" />
-                    <CheckBox Content="하위 폴더 내용까지 비교" IsChecked="{Binding Compare.CompareSubfolders}" Margin="0,0,0,8" />
+                    <TextBlock Text="{l:T '비교 옵션'}" FontWeight="SemiBold" Margin="0,0,0,10" />
+                    <CheckBox Content="{l:T '하위 폴더 내용까지 비교'}" IsChecked="{Binding Compare.CompareSubfolders}" Margin="0,0,0,8" />
                     <DockPanel Margin="0,0,0,8">
-                      <TextBlock Text="초" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="6,0,0,0" />
+                      <TextBlock Text="{l:T '초'}" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="6,0,0,0" />
                       <TextBox DockPanel.Dock="Right" Width="48" Text="{Binding Compare.TimeToleranceSeconds, UpdateSourceTrigger=LostFocus}" />
-                      <TextBlock Text="수정 시각 허용 오차" VerticalAlignment="Center" />
+                      <TextBlock Text="{l:T '수정 시각 허용 오차'}" VerticalAlignment="Center" />
                     </DockPanel>
-                    <CheckBox Content="정확히 1시간 차이는 같게 보기 (서머타임)" IsChecked="{Binding Compare.IgnoreHourOffset}" />
+                    <CheckBox Content="{l:T '정확히 1시간 차이는 같게 보기 (서머타임)'}" IsChecked="{Binding Compare.IgnoreHourOffset}" />
                     <TextBlock Style="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,10,0,0"
-                               Text="FAT/exFAT·네트워크 드라이브는 시각을 2초 단위로 저장하므로 2초 이상을 권장합니다." />
+                               Text="{l:T 'FAT/exFAT·네트워크 드라이브는 시각을 2초 단위로 저장하므로 2초 이상을 권장합니다.'}" />
                   </StackPanel>
                 </Border>
               </Popup>
@@ -208,21 +209,21 @@
             <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command EditFilter}" ToolTip="{cmd:Tip EditFilter}">
               <StackPanel Orientation="Horizontal">
                 <TextBlock Style="{StaticResource Glyph}" Text="&#xE71C;" Margin="0,0,6,0" />
-                <TextBlock Text="필터" />
+                <TextBlock Text="{l:T '필터'}" />
               </StackPanel>
             </Button>
             <Rectangle Width="1" Margin="6,6" Fill="{DynamicResource Brush.Border}" />
-            <Button x:Name="ViewButton" Style="{StaticResource Button.Ghost}" Click="OnViewMenu" ToolTip="보기 방식 (Ctrl+마우스 휠)"
+            <Button x:Name="ViewButton" Style="{StaticResource Button.Ghost}" Click="OnViewMenu" ToolTip="{l:T '보기 방식 (Ctrl+마우스 휠)'}"
                     IsEnabled="{Binding IsCompareMode, Converter={StaticResource InverseBool}}">
               <StackPanel Orientation="Horizontal">
                 <TextBlock Style="{StaticResource Glyph}" Text="&#xE8FD;" Margin="0,0,6,0" />
-                <TextBlock Text="보기" />
+                <TextBlock Text="{l:T '보기'}" />
                 <TextBlock Style="{StaticResource Glyph}" Text="&#xE70D;" FontSize="9" Margin="6,0,0,0" />
               </StackPanel>
             </Button>
-            <ToggleButton Style="{StaticResource Button.Ghost}" Content="탐색 창" IsChecked="{Binding ShowSidebar}" ToolTip="{cmd:Tip ToggleSidebar}" />
-            <ToggleButton Style="{StaticResource Button.Ghost}" Content="미리보기" IsChecked="{Binding ShowPreview}" ToolTip="{cmd:Tip TogglePreview}" />
-            <ToggleButton Style="{StaticResource Button.Ghost}" Content="숨김 항목" IsChecked="{Binding ShowHidden}" ToolTip="{cmd:Tip ToggleHidden}" />
+            <ToggleButton Style="{StaticResource Button.Ghost}" Content="{l:T '탐색 창'}" IsChecked="{Binding ShowSidebar}" ToolTip="{cmd:Tip ToggleSidebar}" />
+            <ToggleButton Style="{StaticResource Button.Ghost}" Content="{l:T '미리보기'}" IsChecked="{Binding ShowPreview}" ToolTip="{cmd:Tip TogglePreview}" />
+            <ToggleButton Style="{StaticResource Button.Ghost}" Content="{l:T '숨김 항목'}" IsChecked="{Binding ShowHidden}" ToolTip="{cmd:Tip ToggleHidden}" />
           </StackPanel>
         </DockPanel>
       </Border>
@@ -281,7 +282,7 @@
                 <TextBlock Grid.Column="2" Style="{StaticResource Text.Secondary}" Text="{Binding PercentText}"
                            HorizontalAlignment="Right" />
                 <Button Grid.Column="3" Style="{StaticResource Button.SmallIcon}" Content="&#xE711;" Margin="8,0,0,0"
-                        Command="{Binding CancelCommand}" ToolTip="작업 취소"
+                        Command="{Binding CancelCommand}" ToolTip="{l:T '작업 취소'}"
                         Visibility="{Binding CanCancel, Converter={StaticResource BoolToVis}}" />
               </Grid>
             </Border>

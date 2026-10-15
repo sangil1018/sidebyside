@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using SideBySide.App.Infrastructure;
 using SideBySide.App.Services;
 using SideBySide.Core.FileSystem;
+using SideBySide.Core.Localization;
 
 namespace SideBySide.App.ViewModels;
 
@@ -120,7 +121,7 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
 
     public BulkObservableCollection<FileItemViewModel> Items { get; } = [];
 
-    public string Title => IsThisPc ? "내 PC"
+    public string Title => IsThisPc ? L.T("내 PC")
         : System.IO.Path.GetPathRoot(Path) == Path ? Path.TrimEnd('\\')
         : System.IO.Path.GetFileName(Path);
 
@@ -134,7 +135,7 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
 
     public bool IsBusy => IsLoading || IsSearching;
 
-    public string EmptyText => SearchText.Trim().Length > 0 ? "검색 결과가 없습니다." : "이 폴더는 비어 있습니다.";
+    public string EmptyText => SearchText.Trim().Length > 0 ? L.T("검색 결과가 없습니다.") : L.T("이 폴더는 비어 있습니다.");
 
     public bool CanGoBack => _back.Count > 0;
 
@@ -175,7 +176,7 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
     public static string NormalizePath(string path)
     {
         path = path.Trim().Trim('"');
-        if (path.Length == 0 || path == "내 PC" || path.StartsWith(ThisPcClsid, StringComparison.OrdinalIgnoreCase)) return ThisPc;
+        if (path.Length == 0 || path == "내 PC" || path == L.T("내 PC") || path.StartsWith(ThisPcClsid, StringComparison.OrdinalIgnoreCase)) return ThisPc;
         path = Environment.ExpandEnvironmentVariables(path);
         if (path.Length == 2 && path[1] == ':') path += "\\";
         try
@@ -351,8 +352,8 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
             Items.ReplaceAll([]);
             Error = ex switch
             {
-                UnauthorizedAccessException => $"'{path}'에 접근할 수 없습니다. 권한이 없습니다.",
-                DirectoryNotFoundException => $"'{path}'을(를) 찾을 수 없습니다.",
+                UnauthorizedAccessException => L.F("'{0}'에 접근할 수 없습니다. 권한이 없습니다.", path),
+                DirectoryNotFoundException => L.F("'{0}'을(를) 찾을 수 없습니다.", path),
                 _ => ex.Message,
             };
         }
@@ -477,7 +478,7 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
         }
 
         if (!cts.IsCancellationRequested && Items.Count >= MaxSearchResults)
-            Error = $"결과가 너무 많아 처음 {MaxSearchResults:N0}개만 표시합니다. 검색어를 좁혀 보세요.";
+            Error = L.F("결과가 너무 많아 처음 {0:N0}개만 표시합니다. 검색어를 좁혀 보세요.", MaxSearchResults);
     }
 
     private async Task RebuildAsync(IReadOnlyCollection<string>? select)
@@ -562,7 +563,7 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
                 if (drive.IsReady && drive.TotalSize > 0)
                 {
                     usage = 1 - (double)drive.AvailableFreeSpace / drive.TotalSize;
-                    space = $"{Formatting.Size(drive.AvailableFreeSpace)} 남음 / {Formatting.Size(drive.TotalSize)}";
+                    space = L.F("{0} 남음 / {1}", Formatting.Size(drive.AvailableFreeSpace), Formatting.Size(drive.TotalSize));
                 }
             }
             catch (IOException)
