@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,6 +35,20 @@ public partial class App : Application
             ErrorLog.Write(args.Exception);
             args.SetObserved();
         };
+
+        if (HotkeyAgent.TryParse(e.Args, out var shortcut))
+        {
+            HotkeyAgent.Run(this, shortcut);
+            return;
+        }
+
+        // 탐색기 "새 창에서 열기"로 휴지통·제어판 같은 가상 폴더가 오면 탐색기에 돌려준다 ("내 PC"는 직접 연다)
+        if (e.Args.Length == 1 && TabViewModel.IsVirtualFolder(e.Args[0]))
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", e.Args[0]) { UseShellExecute = false })?.Dispose();
+            Shutdown();
+            return;
+        }
 
         _services = ConfigureServices();
 

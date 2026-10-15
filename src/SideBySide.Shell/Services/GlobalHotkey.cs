@@ -22,4 +22,11 @@ public static class GlobalHotkey
         => NativeMethods.RegisterHotKey(hwnd, Id, modifiers | ModNoRepeat, virtualKey);
 
     public static void Unregister(IntPtr hwnd) => NativeMethods.UnregisterHotKey(hwnd, Id);
+
+    /// <summary>다른 프로세스의 창을 복원해 앞으로 가져온다 (단축키를 받은 프로세스는 포그라운드를 넘겨줄 수 있다).</summary>
+    public static void BringToFront(IntPtr hwnd)
+    {
+        if (NativeMethods.IsIconic(hwnd)) NativeMethods.ShowWindow(hwnd, NativeMethods.SW_RESTORE);
+        NativeMethods.SetForegroundWindow(hwnd);
+    }
 }
