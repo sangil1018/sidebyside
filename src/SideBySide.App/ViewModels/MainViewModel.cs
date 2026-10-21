@@ -339,6 +339,13 @@ public sealed partial class MainViewModel : ObservableObject
 
     public void NavigateActive(string path) => _ = ActiveTab.NavigateAsync(path);
 
+    /// <summary>마우스 뒤로/앞으로 버튼: 마우스가 있는 창을 활성화하고 그 탭의 기록을 이동한다.</summary>
+    public void GoHistory(PaneViewModel pane, bool back)
+    {
+        Activate(pane);
+        _ = back ? pane.ActiveTab.GoBackAsync() : pane.ActiveTab.GoForwardAsync();
+    }
+
     /// <summary>휴지통·제어판 같은 시스템 위치를 Windows로 연다.</summary>
     public void OpenSystemPlace(string target)
     {
