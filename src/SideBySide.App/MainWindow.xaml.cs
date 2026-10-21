@@ -1,8 +1,10 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Interop;
 using SideBySide.App.Commands;
+using SideBySide.App.Infrastructure;
 using SideBySide.App.Services;
 using SideBySide.App.ViewModels;
 using SideBySide.App.Views;
@@ -48,6 +50,7 @@ public partial class MainWindow : Window
         viewModel.FocusSearchRequested += (_, pane) => PaneView(pane).FocusSearch();
         viewModel.ContextMenuRequested += (_, pane) => PaneView(pane).ShowContextMenuForSelection();
         viewModel.OpenShortcutChanged += (_, _) => RegisterOpenShortcut();
+        PreviewMouseDown += OnPreviewMouseDown;
 
         LeftPane.VerticalScrolled += (_, offset) => SyncScroll(RightPane, offset);
         RightPane.VerticalScrolled += (_, offset) => SyncScroll(LeftPane, offset);
@@ -141,6 +144,17 @@ public partial class MainWindow : Window
     }
 
     /// <summary>USB 장치 연결/분리 감지 → 드라이브 목록 갱신 (연속 알림은 묶어서 한 번만).</summary>
+    /// <summary>마우스 추가 버튼: 뒤로(XButton1) / 앞으로(XButton2). 마우스가 있는 창의 탭에 적용한다.</summary>
+    private void OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton is not (MouseButton.XButton1 or MouseButton.XButton2)) return;
+        e.Handled = true;
+        if (ViewModel.IsDiffOpen) return; // 파일 비교 화면에는 탐색 기록이 없다
+
+        var pane = VisualTree.FindAncestor<FilePane>(e.OriginalSource)?.DataContext as PaneViewModel ?? ViewModel.ActivePane;
+        ViewModel.GoHistory(pane, back: e.ChangedButton == MouseButton.XButton1);
+    }
+
     /// <summary>앱 전역 단축키로 창을 앞으로 가져온다 (앱이 실행 중일 때만 동작).</summary>
     private void RegisterOpenShortcut()
     {
