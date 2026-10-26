@@ -57,7 +57,12 @@ public sealed class DialogService(ThemeManager theme) : IDialogService
 
     public AppPreferences? EditPreferences(AppPreferences current)
     {
-        var dialog = Prepare(new SettingsDialog(current));
+        // 포인트 색은 고르는 즉시 미리 보여 준다 (취소하면 호출자가 되돌린다)
+        var dialog = Prepare(new SettingsDialog(current, accent =>
+        {
+            theme.Accent = accent;
+            theme.Apply(theme.Mode);
+        }));
         return dialog.ShowDialog() == true ? dialog.Result : null;
     }
 

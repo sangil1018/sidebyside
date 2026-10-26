@@ -63,4 +63,52 @@ public class SettingsTests
         Assert.False(s.DualPane);
         Assert.Equal(AppSettings.CurrentVersion, s.Version);
     }
+
+    [Fact]
+    public void Version1_file_gets_module_defaults()
+    {
+        using var d = new TempDir();
+        var path = Path.Combine(d.Path, "settings.json");
+        File.WriteAllText(path, """{ "Version": 1, "Theme": "Dark" }""");
+        var s = new JsonSettingsStore(path).Load();
+        Assert.Equal(ThemeMode.Dark, s.Theme);
+        Assert.Equal("Default", s.AccentColor);
+        Assert.Empty(s.Modules);
+        Assert.Equal(AppSettings.CurrentVersion, s.Version);
+    }
+
+    [Fact]
+    public void Module_settings_roundtrip()
+    {
+        using var d = new TempDir();
+        var store = new JsonSettingsStore(Path.Combine(d.Path, "settings.json"));
+        var s = new AppSettings { AccentColor = "#0078D4" };
+        s.Modules["resize"] = new ModuleSettings
+        {
+            Enabled = true,
+            OpenMode = ModuleOpenMode.Window,
+            Data = new System.Text.Json.Nodes.JsonObject { ["Suffix"] = "_small" },
+        };
+        store.Save(s);
+
+        var loaded = store.Load();
+        Assert.Equal("#0078D4", loaded.AccentColor);
+        var m = loaded.Modules["resize"];
+        Assert.True(m.Enabled);
+        Assert.Equal(ModuleOpenMode.Window, m.OpenMode);
+        Assert.Equal("_small", m.Data!["Suffix"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void Oversized_module_data_is_dropped_but_rest_kept()
+    {
+        using var d = new TempDir();
+        var path = Path.Combine(d.Path, "settings.json");
+        var big = new string('x', ModuleSettings.MaxDataLength + 10);
+        File.WriteAllText(path, "{ \"Version\": 2, \"Theme\": \"Dark\", \"Modules\": { \"seqviewer\": { \"Enabled\": true, \"Data\": { \"Big\": \"" + big + "\" } } } }");
+        var s = new JsonSettingsStore(path).Load();
+        Assert.Equal(ThemeMode.Dark, s.Theme);
+        Assert.True(s.Modules["seqviewer"].Enabled);
+        Assert.Null(s.Modules["seqviewer"].Data);
+    }
 }

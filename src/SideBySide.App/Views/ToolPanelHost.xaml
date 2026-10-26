@@ -1,0 +1,44 @@
+<UserControl x:Class="SideBySide.App.Views.ToolPanelHost"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:SideBySide.App.Infrastructure"
+             xmlns:mod="clr-namespace:SideBySide.App.Modules"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance mod:ModuleManager}">
+  <!-- 오른쪽 도구 패널: 위쪽 탭(열린 도구 전환·창으로 분리·닫기) + 선택한 도구 화면 -->
+  <Grid Background="{DynamicResource Brush.SurfaceBg}">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <Border Height="{StaticResource Panel.TabHeight}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1" Background="{DynamicResource Brush.WindowBg}">
+      <ItemsControl x:Name="Tabs" ItemsSource="{Binding PanelTools}" Focusable="False">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="{x:Type mod:PanelTool}">
+            <RadioButton Style="{StaticResource ToolTab}" GroupName="ToolTabs" Height="{StaticResource Panel.TabHeight}"
+                         Checked="OnTabChecked" Loaded="OnTabLoaded" ToolTip="{Binding Title}">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource Glyph}" Text="{Binding Glyph}" FontSize="13" Margin="{StaticResource Icon.Gap}" />
+                <TextBlock Text="{Binding Title}" MaxWidth="150" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <Button Style="{StaticResource Button.SmallIcon}" Content="{StaticResource Icon.Window}" Margin="6,0,0,0"
+                        Click="OnPopOut" ToolTip="{l:T '별도 창으로 열기'}" />
+                <Button Style="{StaticResource Button.SmallIcon}" Content="{StaticResource Icon.Close}"
+                        Click="OnClose" ToolTip="{l:T '닫기'}" />
+              </StackPanel>
+            </RadioButton>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+
+    <ContentPresenter Grid.Row="1" Content="{Binding ActivePanelTool.View}" />
+  </Grid>
+</UserControl>

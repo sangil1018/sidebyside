@@ -57,6 +57,40 @@
       <Setter Property="MinHeight" Value="32" />
     </Style>
 
+    <Style x:Key="Settings.RowStack" TargetType="StackPanel">
+      <Setter Property="Margin" Value="16,12" />
+    </Style>
+
+    <!-- 포인트 색 견본 -->
+    <Style x:Key="Settings.Swatch" TargetType="RadioButton">
+      <Setter Property="Margin" Value="0,0,8,6" />
+      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RadioButton">
+            <Grid Width="30" Height="30">
+              <Ellipse x:Name="Ring" Stroke="{DynamicResource Brush.Text}" StrokeThickness="2" Visibility="Hidden" />
+              <Ellipse Margin="4" Fill="{TemplateBinding Background}" Stroke="{DynamicResource Brush.BorderStrong}" StrokeThickness="1" />
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Ring" Property="Visibility" Value="Visible" />
+              </Trigger>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Ring" Property="Visibility" Value="Visible" />
+                <Setter TargetName="Ring" Property="Opacity" Value="0.5" />
+              </Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Ring" Property="Opacity" Value="1" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
     <Style x:Key="Settings.Divider" TargetType="Border">
       <Setter Property="Height" Value="1" />
       <Setter Property="Background" Value="{DynamicResource Brush.Border}" />
@@ -107,6 +141,12 @@
             <StackPanel Orientation="Horizontal">
               <TextBlock Style="{StaticResource Glyph}" Text="&#xE8A0;" Margin="0,0,12,0" />
               <TextBlock Text="{l:T '탐색 창'}" />
+            </StackPanel>
+          </RadioButton>
+          <RadioButton x:Name="TabModules" Style="{StaticResource Settings.Nav}" GroupName="Pages" Checked="OnTabChanged">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Style="{StaticResource Glyph}" Text="{StaticResource Icon.Tools}" Margin="0,0,12,0" />
+              <TextBlock Text="{l:T '모듈'}" />
             </StackPanel>
           </RadioButton>
           <RadioButton x:Name="TabShortcuts" Style="{StaticResource Settings.Nav}" GroupName="Pages" Checked="OnTabChanged">
@@ -160,6 +200,19 @@
                     </StackPanel>
                   </Border>
                 </Grid>
+                <Border Style="{StaticResource Settings.Divider}" />
+                <StackPanel Style="{StaticResource Settings.RowStack}">
+                  <TextBlock Style="{StaticResource Settings.RowTitle}" Text="{l:T '포인트 색'}" />
+                  <TextBlock Style="{StaticResource Settings.RowHint}" Text="{l:T '선택·포커스·주 버튼·진행 표시에 쓰는 색입니다. 라이트/다크 테마에 맞게 밝기를 자동으로 맞춥니다.'}" />
+                  <WrapPanel x:Name="AccentSwatches" Margin="0,10,0,0" />
+                  <DockPanel Margin="0,8,0,0">
+                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource Text.Secondary}" Text="{l:T '사용자 지정'}" Margin="0,0,8,0" />
+                    <Border x:Name="AccentPreview" DockPanel.Dock="Left" Width="22" Height="22" CornerRadius="11" Margin="0,0,8,0"
+                            BorderBrush="{DynamicResource Brush.BorderStrong}" BorderThickness="1" />
+                    <TextBox x:Name="AccentHex" Width="96" HorizontalAlignment="Left" MaxLength="7" TextChanged="OnAccentHexChanged"
+                             ToolTip="#RRGGBB" />
+                  </DockPanel>
+                </StackPanel>
               </StackPanel>
             </Border>
 
@@ -224,6 +277,20 @@
           </Border>
           <TextBlock Style="{StaticResource Settings.RowHint}" Margin="2,8,0,0" Text="{l:T '이 위치들은 Windows 탐색기(또는 Windows 설정)로 엽니다.'}" />
         </StackPanel>
+
+        <!-- 모듈 -->
+        <ScrollViewer x:Name="ModulesPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" Padding="0,0,6,0">
+          <StackPanel>
+            <TextBlock Style="{StaticResource Settings.PageTitle}" Text="{l:T '모듈'}" />
+            <TextBlock Style="{StaticResource Settings.RowHint}" Margin="2,0,0,12"
+                       Text="{l:T '켠 도구만 도구 모음의 ‘도구’ 메뉴와 우클릭 메뉴에 나타납니다. 꺼진 도구는 불러오지 않아 메모리를 쓰지 않습니다.'}" />
+            <Border Style="{StaticResource Settings.Card}">
+              <StackPanel x:Name="ModulesPanel" />
+            </Border>
+            <TextBlock Style="{StaticResource Settings.RowHint}" Margin="2,8,0,0"
+                       Text="{l:T '오른쪽 패널로 연 도구는 패널 탭의 창 단추로 언제든 별도 창으로 옮길 수 있습니다.'}" />
+          </StackPanel>
+        </ScrollViewer>
 
         <!-- 단축키 -->
         <DockPanel x:Name="ShortcutsPage" Visibility="Collapsed">

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- 모듈과 앱 사이의 계약. 모듈은 이 어셈블리와 Core만 참조하고 앱(SideBySide.App)은 모른다. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>SideBySide.Modules</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SideBySide.Core\SideBySide.Core.csproj" />
+  </ItemGroup>
+
+</Project>

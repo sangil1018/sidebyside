@@ -193,6 +193,17 @@
           </StackPanel>
 
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+            <!-- 켜진 도구 모듈 (설정 > 모듈). 하나도 없으면 숨김 -->
+            <StackPanel Orientation="Horizontal" Visibility="{Binding Tools.HasEnabledModules, Converter={StaticResource BoolToVis}}">
+              <Button x:Name="ToolsButton" Style="{StaticResource Button.Ghost}" Click="OnToolsMenu" ToolTip="{l:T '도구 모듈'}">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Style="{StaticResource Glyph}" Text="{StaticResource Icon.Tools}" Margin="0,0,6,0" />
+                  <TextBlock Text="{l:T '도구'}" />
+                  <TextBlock Style="{StaticResource Glyph}" Text="{StaticResource Icon.Dropdown}" FontSize="9" Margin="6,0,0,0" />
+                </StackPanel>
+              </Button>
+              <Rectangle Width="1" Margin="6,6" Fill="{DynamicResource Brush.Border}" />
+            </StackPanel>
             <!-- 활성 필터 칩 -->
             <Border Background="{DynamicResource Brush.AccentSubtle}" CornerRadius="12" Padding="10,2,4,2" Margin="0,0,6,0"
                     VerticalAlignment="Center" MaxWidth="360"
@@ -249,6 +260,8 @@
 
         <GridSplitter x:Name="PreviewSplitter" Grid.Column="5" Style="{StaticResource Splitter}" />
         <views:PreviewPane x:Name="PreviewPane" Grid.Column="6" DataContext="{Binding Preview}" />
+        <!-- 도구 패널: 미리보기 자리를 함께 쓰며, 열린 도구가 있으면 미리보기 대신 보인다 -->
+        <views:ToolPanelHost x:Name="ToolPanel" Grid.Column="6" DataContext="{Binding Tools}" Visibility="Collapsed" />
 
         <!-- 파일 비교 화면: 창 영역 위에 덮어 표시 -->
         <views:FileDiffView x:Name="DiffView" Grid.Column="2" Grid.ColumnSpan="3"

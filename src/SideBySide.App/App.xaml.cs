@@ -4,6 +4,7 @@ using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using SideBySide.App.Commands;
 using SideBySide.App.Infrastructure;
+using SideBySide.App.Modules;
 using SideBySide.App.Services;
 using SideBySide.App.ViewModels;
 using SideBySide.Core.Settings;
@@ -26,6 +27,15 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // 모듈의 관리자 권한 작업 1회 실행 (UAC로 시작된 프로세스): 창 없이 처리하고 종료.
+        // 오류 로그 등록보다 먼저 — 승격 프로세스는 사용자 쓰기 가능 경로에 파일을 쓰지 않는다 (링크 바꿔치기 차단)
+        if (Elevation.TryRunElevated(e.Args) is { } elevatedExit)
+        {
+            Shutdown(elevatedExit);
+            return;
+        }
+
         DispatcherUnhandledException += OnUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
         {
@@ -56,7 +66,9 @@ public partial class App : Application
         var settings = _services.GetRequiredService<AppSettings>();
         L.Use(settings.Language); // 다른 화면 문자열보다 먼저 (명령 표·XAML이 이 값을 읽는다)
         CommandRegistry.ApplyOverrides(settings.KeyBindings);
-        _services.GetRequiredService<ThemeManager>().Apply(settings.Theme);
+        var theme = _services.GetRequiredService<ThemeManager>();
+        theme.Accent = settings.AccentColor;
+        theme.Apply(settings.Theme);
 
         var window = _services.GetRequiredService<MainWindow>();
         MainWindow = window;
@@ -77,6 +89,7 @@ public partial class App : Application
                 // 설정 저장 실패는 종료를 막지 않는다
             }
 
+            // 모듈은 메인 창을 닫을 때 먼저 정리된다 (설정 저장 전). 여기서는 남은 것만 해제
             _services.Dispose();
         }
 
@@ -103,6 +116,7 @@ public partial class App : Application
 
         // App
         services.AddSingleton<ThemeManager>();
+        services.AddSingleton<ModuleManager>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<UndoService>();
         services.AddSingleton<FileTransferService>();

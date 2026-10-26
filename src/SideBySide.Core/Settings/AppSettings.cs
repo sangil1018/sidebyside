@@ -70,7 +70,7 @@ public sealed class PaneState
 /// </summary>
 public sealed class AppSettings
 {
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
 
     public int Version { get; set; } = CurrentVersion;
 
@@ -129,4 +129,42 @@ public sealed class AppSettings
 
     /// <summary>사용자가 바꾼 단축키 (명령 ID → "Ctrl+Shift+E" 형식, 빈 문자열 = 단축키 없음). 없는 명령은 기본값.</summary>
     public Dictionary<string, string> KeyBindings { get; set; } = [];
+
+    /// <summary>포인트(강조) 색: "Default" = 앱 기본, "System" = Windows 강조색, "#RRGGBB" = 사용자 지정.</summary>
+    public string AccentColor { get; set; } = "Default";
+
+    /// <summary>모듈 ID → 설정. 없는 모듈은 꺼짐.</summary>
+    public Dictionary<string, ModuleSettings> Modules { get; set; } = [];
+
+    /// <summary>오른쪽 도구 패널 너비 (미리보기와 따로 저장).</summary>
+    public double ToolPanelWidth { get; set; } = 380;
+}
+
+/// <summary>모듈을 여는 곳.</summary>
+public enum ModuleOpenMode
+{
+    /// <summary>모듈마다 정한 기본값.</summary>
+    Default,
+
+    /// <summary>오른쪽 도구 패널.</summary>
+    Panel,
+
+    /// <summary>별도 창.</summary>
+    Window,
+}
+
+/// <summary>모듈 하나의 설정. <see cref="Data"/>는 모듈이 직접 읽고 쓰는 값 (형식은 모듈이 정한다).</summary>
+public sealed class ModuleSettings
+{
+    /// <summary>모듈 데이터 최대 크기 (손상되거나 비정상적으로 커진 설정이 시작을 느리게 하지 않게).</summary>
+    public const int MaxDataLength = 256 * 1024;
+
+    public bool Enabled { get; set; }
+
+    public ModuleOpenMode OpenMode { get; set; } = ModuleOpenMode.Default;
+
+    /// <summary>별도 창 위치·크기.</summary>
+    public WindowPlacement? Window { get; set; }
+
+    public System.Text.Json.Nodes.JsonObject? Data { get; set; }
 }

@@ -7,6 +7,8 @@
       <ResourceDictionary.MergedDictionaries>
         <!-- 첫 번째 사전은 ThemeManager가 라이트/다크로 교체한다 -->
         <ResourceDictionary Source="Themes/Tokens.Light.xaml" />
+        <ResourceDictionary Source="Themes/Layout.xaml" />
+        <ResourceDictionary Source="Themes/Icons.xaml" />
         <ResourceDictionary Source="Themes/Controls/Base.xaml" />
         <ResourceDictionary Source="Themes/Controls/Buttons.xaml" />
         <ResourceDictionary Source="Themes/Controls/Inputs.xaml" />
@@ -14,6 +16,7 @@
         <ResourceDictionary Source="Themes/Controls/Menus.xaml" />
         <ResourceDictionary Source="Themes/Controls/Lists.xaml" />
         <ResourceDictionary Source="Themes/Controls/Dialogs.xaml" />
+        <ResourceDictionary Source="Themes/Controls/ToolPanel.xaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>

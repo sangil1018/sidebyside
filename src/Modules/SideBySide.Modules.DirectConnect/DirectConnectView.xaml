@@ -1,0 +1,169 @@
+<UserControl x:Class="SideBySide.Modules.DirectConnect.DirectConnectView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:m="urn:sidebyside-modules"
+             xmlns:local="clr-namespace:SideBySide.Modules.DirectConnect"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance local:DirectConnectViewModel}"
+             AllowDrop="True" Drop="OnDrop" DragOver="OnDragOver">
+  <m:ToolPanel Glyph="{x:Static m:Glyphs.DirectConnect}" Title="{m:T 'Direct Connect'}" Subtitle="{Binding Status}">
+    <m:ToolPanel.HeaderTools>
+      <Button Style="{StaticResource Button.Icon}" Content="{x:Static m:Glyphs.Refresh}" Command="{Binding RefreshCommand}" ToolTip="{m:T '기기 다시 찾기'}" />
+    </m:ToolPanel.HeaderTools>
+    <m:ToolPanel.Footer>
+      <Button Style="{StaticResource Button.Primary}" MinWidth="96" Command="{Binding SendCommand}">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Style="{StaticResource Glyph}" Text="{x:Static m:Glyphs.Send}" FontSize="12" Margin="{StaticResource Icon.Gap}" />
+          <TextBlock Text="{m:T '보내기'}" />
+        </StackPanel>
+      </Button>
+    </m:ToolPanel.Footer>
+
+    <StackPanel>
+      <!-- 받기 확인 -->
+      <Border Background="{DynamicResource Brush.AccentSubtle}" BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="1"
+              CornerRadius="{StaticResource Radius.Card}" Padding="12,10" Margin="{StaticResource Section.Margin}"
+              Visibility="{Binding HasRequest, Converter={StaticResource BoolToVis}}">
+        <StackPanel>
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Left" Style="{StaticResource Glyph}" Text="{x:Static m:Glyphs.Download}" Foreground="{DynamicResource Brush.Accent}" Margin="0,1,8,0" VerticalAlignment="Top" />
+            <TextBlock Text="{Binding RequestText}" TextWrapping="Wrap" />
+          </DockPanel>
+          <WrapPanel HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Style="{StaticResource Button.Standard}" Content="{m:T '거절'}" Margin="0,0,8,0" Command="{Binding RejectCommand}" />
+            <Button Style="{StaticResource Button.Standard}" Content="{m:T '이 기기는 항상 받기'}" Margin="0,0,8,0" Command="{Binding AlwaysAcceptCommand}" />
+            <Button Style="{StaticResource Button.Primary}" Content="{m:T '받기'}" MinWidth="72" Command="{Binding AcceptCommand}" />
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
+      <m:ToolSection Header="{m:T '기기'}">
+        <StackPanel>
+          <ListBox Style="{StaticResource ListBox.Plain}" ItemsSource="{Binding Peers}" SelectedItem="{Binding SelectedPeer}" Margin="4,0" MinHeight="40" MaxHeight="180">
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="{x:Type local:Peer}">
+                <DockPanel Margin="4,4">
+                  <TextBlock x:Name="Icon" DockPanel.Dock="Left" Style="{StaticResource Glyph}" Text="{x:Static m:Glyphs.Pc}" Margin="0,0,10,0" />
+                  <StackPanel>
+                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Address}" Style="{StaticResource Text.Secondary}" />
+                  </StackPanel>
+                </DockPanel>
+                <DataTemplate.Triggers>
+                  <DataTrigger Binding="{Binding IsPhone}" Value="True">
+                    <Setter TargetName="Icon" Property="Text" Value="{x:Static m:Glyphs.Phone}" />
+                  </DataTrigger>
+                </DataTemplate.Triggers>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <TextBlock Style="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="12,4,12,8"
+                     Text="{m:T '같은 Wi-Fi에서 AgentZi Direct Connect 앱(휴대폰·PC)의 받기를 켜면 여기에 나타납니다. 같은 Wi-Fi가 없으면 이 PC의 모바일 핫스팟에 휴대폰을 연결하세요.'}" />
+          <Button Style="{StaticResource Button.Ghost}" HorizontalAlignment="Left" Margin="8,0,0,6" Command="{Binding OpenHotspotSettingsCommand}">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Style="{StaticResource Glyph}" Text="{x:Static m:Glyphs.Network}" Margin="{StaticResource Icon.Gap}" />
+              <TextBlock Text="{m:T '모바일 핫스팟 설정 열기'}" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </m:ToolSection>
+
+      <m:ToolSection Header="{m:T '보낼 파일'}">
+        <StackPanel>
+          <ListBox Style="{StaticResource ListBox.Plain}" ItemsSource="{Binding PendingFiles}" MaxHeight="140" Margin="12,4"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" ToolTip="{Binding}" Style="{StaticResource Text.Secondary}" />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <TextBlock Style="{StaticResource Text.Secondary}" Margin="12,0,12,4" Text="{m:T '파일을 여기로 끌어 놓거나, 파일 목록에서 우클릭 > Direct Connect로 보내기.'}" TextWrapping="Wrap" />
+          <WrapPanel Margin="10,0,10,6">
+            <Button Style="{StaticResource Button.Ghost}" Command="{Binding UseSelectionCommand}">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource Glyph}" Text="{x:Static m:Glyphs.Check}" Margin="{StaticResource Icon.Gap}" />
+                <TextBlock Text="{m:T '선택 항목 사용'}" />
+              </StackPanel>
+            </Button>
+            <Button Style="{StaticResource Button.Ghost}" Command="{Binding AddFilesCommand}">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource Glyph}" Text="{x:Static m:Glyphs.Add}" Margin="{StaticResource Icon.Gap}" />
+                <TextBlock Text="{m:T '파일 추가'}" />
+              </StackPanel>
+            </Button>
+            <Button Style="{StaticResource Button.Ghost}" Command="{Binding ClearPendingCommand}">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource Glyph}" Text="{x:Static m:Glyphs.Remove}" Margin="{StaticResource Icon.Gap}" />
+                <TextBlock Text="{m:T '비우기'}" />
+              </StackPanel>
+            </Button>
+          </WrapPanel>
+        </StackPanel>
+      </m:ToolSection>
+
+      <m:ToolSection Header="{m:T '전송'}">
+        <StackPanel>
+          <ItemsControl ItemsSource="{Binding Transfers}" Margin="12,4">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="{x:Type local:TransferItem}">
+                <Grid Margin="0,3">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock x:Name="Dir" Style="{StaticResource Glyph}" Text="{x:Static m:Glyphs.Download}" FontSize="12" Margin="0,0,8,0" />
+                  <StackPanel Grid.Column="1">
+                    <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SavedPath}" />
+                    <ProgressBar Style="{StaticResource ProgressBar.Thin}" Minimum="0" Maximum="1" Value="{Binding Fraction, Mode=OneWay}" Margin="0,3,0,0" />
+                    <TextBlock Style="{StaticResource Text.Secondary}" TextTrimming="CharacterEllipsis">
+                      <Run Text="{Binding PeerName, Mode=OneWay}" />
+                      <Run Text=" · " />
+                      <Run Text="{Binding StateText, Mode=OneWay}" />
+                    </TextBlock>
+                  </StackPanel>
+                  <Button Grid.Column="2" Style="{StaticResource Button.SmallIcon}" Content="{x:Static m:Glyphs.OpenFolder}" Margin="6,0,0,0"
+                          Command="{Binding DataContext.OpenReceivedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"
+                          ToolTip="{m:T '받은 파일 위치 열기'}"
+                          Visibility="{Binding SavedPath, Converter={StaticResource NullToVis}}" />
+                </Grid>
+                <DataTemplate.Triggers>
+                  <DataTrigger Binding="{Binding IsSend}" Value="True">
+                    <Setter TargetName="Dir" Property="Text" Value="{x:Static m:Glyphs.Send}" />
+                  </DataTrigger>
+                </DataTemplate.Triggers>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Button Style="{StaticResource Button.Ghost}" HorizontalAlignment="Right" Margin="8,0,8,6" Content="{m:T '끝난 항목 지우기'}" Command="{Binding ClearTransfersCommand}" />
+        </StackPanel>
+      </m:ToolSection>
+
+      <m:ToolSection Header="{m:T '받기'}">
+        <StackPanel>
+          <m:ToolRow Label="{m:T '받기 허용'}" Hint="{m:T '끄면 다른 기기 목록에서 이 PC가 보이지 않습니다.'}">
+            <CheckBox IsChecked="{Binding ReceiveEnabled}" />
+          </m:ToolRow>
+          <m:ToolRow Label="{m:T '받기 전에 확인'}" Hint="{m:T '‘항상 받기’로 허용한 기기는 묻지 않습니다.'}">
+            <CheckBox IsChecked="{Binding AskBeforeReceive}" />
+          </m:ToolRow>
+          <m:ToolRow Label="{m:T '화면을 닫아도 받기'}" Hint="{m:T '켜면 도구를 닫아도 받기 대기를 계속합니다 (SideBySide가 실행 중일 때).'}">
+            <CheckBox IsChecked="{Binding BackgroundReceive}" />
+          </m:ToolRow>
+          <m:ToolRow Label="{m:T '이 PC 이름'}">
+            <TextBox Width="160" Text="{Binding DeviceName, UpdateSourceTrigger=LostFocus}" />
+          </m:ToolRow>
+          <DockPanel Margin="12,6,12,8">
+            <Button DockPanel.Dock="Right" Style="{StaticResource Button.Standard}" Content="{m:T '바꾸기…'}" Margin="8,0,0,0" Command="{Binding ChangeSaveFolderCommand}" />
+            <Button DockPanel.Dock="Right" Style="{StaticResource Button.Standard}" Content="{m:T '열기'}" Margin="8,0,0,0" Command="{Binding OpenSaveFolderCommand}" />
+            <TextBlock Text="{Binding SaveFolder}" Style="{StaticResource Text.Secondary}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SaveFolder}" />
+          </DockPanel>
+          <Button Style="{StaticResource Button.Ghost}" HorizontalAlignment="Left" Margin="8,0,0,6" Content="{m:T '항상 받기 목록 비우기'}" Command="{Binding ForgetTrustedCommand}" />
+        </StackPanel>
+      </m:ToolSection>
+    </StackPanel>
+  </m:ToolPanel>
+</UserControl>

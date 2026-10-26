@@ -1,0 +1,168 @@
+<UserControl x:Class="SideBySide.Modules.SeqViewer.ViewerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:m="urn:sidebyside-modules"
+             xmlns:local="clr-namespace:SideBySide.Modules.SeqViewer"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance local:ViewerViewModel}"
+             Focusable="True" FocusVisualStyle="{x:Null}">
+  <m:ToolPanel Glyph="{x:Static m:Glyphs.SequenceViewer}" Title="{Binding Title}" Subtitle="{Binding Status}"
+               IsBusy="{Binding IsLoading}" ScrollContent="False">
+    <m:ToolPanel.HeaderTools>
+      <Button Style="{StaticResource Button.Icon}" Content="{x:Static m:Glyphs.OpenFolder}" Command="{Binding BrowseCommand}" ToolTip="{m:T '폴더 열기'}" />
+    </m:ToolPanel.HeaderTools>
+    <m:ToolPanel.Footer>
+      <TextBlock x:Name="CacheText" Style="{StaticResource Text.Secondary}" />
+    </m:ToolPanel.Footer>
+
+    <Grid x:Name="Layout" Margin="0,0,0,12">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition x:Name="SideColumn" Width="290" />
+      </Grid.ColumnDefinitions>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="*" />
+        <RowDefinition x:Name="SideRow" Height="0" />
+      </Grid.RowDefinitions>
+
+      <!-- 화면 + 재생 막대 -->
+      <DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource Brush.WindowBg}" BorderBrush="{DynamicResource Brush.Border}"
+                BorderThickness="1,0,1,1" CornerRadius="0,0,6,6" Padding="8,6">
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+              <Button Style="{StaticResource Button.Icon}" Content="{x:Static m:Glyphs.Previous}" Command="{Binding GoToStartCommand}" ToolTip="{m:T '처음 (Home)'}" />
+              <Button Style="{StaticResource Button.Icon}" Content="&#xE76B;" Command="{Binding StepCommand}" CommandParameter="{x:Static local:ViewerView.MinusOne}" ToolTip="{m:T '이전 프레임 (←)'}" />
+              <Button x:Name="PlayButton" Style="{StaticResource Button.Icon}" Content="{x:Static m:Glyphs.Play}" Command="{Binding TogglePlayCommand}" ToolTip="{m:T '재생 / 일시 정지 (Space)'}" />
+              <Button Style="{StaticResource Button.Icon}" Content="&#xE76C;" Command="{Binding StepCommand}" CommandParameter="{x:Static local:ViewerView.PlusOne}" ToolTip="{m:T '다음 프레임 (→)'}" />
+              <Button Style="{StaticResource Button.Icon}" Content="{x:Static m:Glyphs.Next}" Command="{Binding GoToEndCommand}" ToolTip="{m:T '끝 (End)'}" />
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0">
+              <TextBox Width="44" Text="{Binding Fps, UpdateSourceTrigger=LostFocus}" ToolTip="{m:T '초당 프레임'}" VerticalAlignment="Center" />
+              <TextBlock Text="fps" Style="{StaticResource Text.Secondary}" Margin="4,0,8,0" />
+              <Button Style="{StaticResource Button.Icon}" Content="{x:Static m:Glyphs.Fit}" Click="OnFit" ToolTip="{m:T '화면에 맞춤 (F)'}" />
+              <TextBlock x:Name="ZoomText" Style="{StaticResource Text.Secondary}" Width="44" TextAlignment="Right" />
+            </StackPanel>
+            <TextBlock DockPanel.Dock="Right" Text="{Binding FrameLabel}" Style="{StaticResource Text.Secondary}" Margin="8,0,0,0" MinWidth="90" />
+            <Slider x:Name="Scrubber" Minimum="0" Maximum="{Binding LastFrame}" Value="{Binding CurrentFrame}" SmallChange="1" LargeChange="10"
+                    IsSnapToTickEnabled="True" TickFrequency="1" Margin="8,0" VerticalAlignment="Center" />
+          </DockPanel>
+        </Border>
+
+        <!-- 화면: 바둑판 바탕 위에 레이어 이미지 (확대·이동은 변환으로) -->
+        <Border x:Name="Viewport" ClipToBounds="True" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1,1,1,0" CornerRadius="6,6,0,0"
+                MouseWheel="OnWheel" MouseDown="OnViewportMouseDown" MouseMove="OnViewportMouseMove" MouseUp="OnViewportMouseUp"
+                SizeChanged="OnViewportSizeChanged">
+          <Border.Background>
+            <DrawingBrush TileMode="Tile" Viewport="0,0,16,16" ViewportUnits="Absolute">
+              <DrawingBrush.Drawing>
+                <DrawingGroup>
+                  <GeometryDrawing Brush="#2A2A2A" Geometry="M0,0 L2,0 2,2 0,2Z" />
+                  <GeometryDrawing Brush="#333333" Geometry="M0,0 L1,0 1,1 0,1Z M1,1 L2,1 2,2 1,2Z" />
+                </DrawingGroup>
+              </DrawingBrush.Drawing>
+            </DrawingBrush>
+          </Border.Background>
+          <Grid>
+            <Canvas>
+              <Grid x:Name="Stage" RenderOptions.BitmapScalingMode="HighQuality">
+                <Grid.RenderTransform>
+                  <TransformGroup>
+                    <ScaleTransform x:Name="StageScale" />
+                    <TranslateTransform x:Name="StagePan" />
+                  </TransformGroup>
+                </Grid.RenderTransform>
+              </Grid>
+            </Canvas>
+            <TextBlock x:Name="EmptyText" Style="{StaticResource Text.Secondary}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       TextAlignment="Center" TextWrapping="Wrap" Margin="24"
+                       Text="{m:T '시퀀스 폴더나 파일을 우클릭 > 시퀀스 뷰어로 열기, 또는 오른쪽 위 폴더 단추를 누르세요.'}" />
+          </Grid>
+        </Border>
+      </DockPanel>
+
+      <!-- 레이어·프리셋 -->
+      <ScrollViewer x:Name="SidePanel" Grid.Column="1" VerticalScrollBarVisibility="Auto" Margin="12,0,0,0" Padding="0,0,4,0">
+        <StackPanel>
+          <m:ToolSection Header="{m:T '레이어'}">
+            <StackPanel>
+              <ListBox Style="{StaticResource ListBox.Plain}" ItemsSource="{Binding Layers}" SelectedItem="{Binding SelectedLayer}" MaxHeight="260"
+                       ScrollViewer.HorizontalScrollBarVisibility="Disabled" Margin="4,0">
+                <ListBox.ItemTemplate>
+                  <DataTemplate DataType="{x:Type local:LayerViewModel}">
+                    <DockPanel Margin="2,3">
+                      <ToggleButton DockPanel.Dock="Left" Style="{StaticResource Button.SmallIcon}" IsChecked="{Binding Visible}" Margin="0,0,6,0"
+                                    ToolTip="{m:T '보이기 / 숨기기'}">
+                        <TextBlock x:Name="Eye" Style="{StaticResource Glyph}" Text="{x:Static m:Glyphs.Eye}" FontSize="12" />
+                      </ToggleButton>
+                      <StackPanel>
+                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Source.Directory}" />
+                        <TextBlock Text="{Binding Info}" Style="{StaticResource Text.Secondary}" />
+                      </StackPanel>
+                    </DockPanel>
+                    <DataTemplate.Triggers>
+                      <DataTrigger Binding="{Binding Visible}" Value="False">
+                        <Setter TargetName="Eye" Property="Text" Value="{x:Static m:Glyphs.Hidden}" />
+                        <Setter TargetName="Eye" Property="Opacity" Value="0.5" />
+                      </DataTrigger>
+                    </DataTemplate.Triggers>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,2">
+                <Button Style="{StaticResource Button.SmallIcon}" Content="{x:Static m:Glyphs.Up}" Command="{Binding MoveLayerCommand}" CommandParameter="{x:Static local:ViewerView.MinusOne}" ToolTip="{m:T '위로'}" />
+                <Button Style="{StaticResource Button.SmallIcon}" Content="{x:Static m:Glyphs.Down}" Command="{Binding MoveLayerCommand}" CommandParameter="{x:Static local:ViewerView.PlusOne}" ToolTip="{m:T '아래로'}" />
+              </StackPanel>
+            </StackPanel>
+          </m:ToolSection>
+
+          <m:ToolSection Header="{m:T '선택한 레이어'}" DataContext="{Binding SelectedLayer}"
+                         Visibility="{Binding Converter={StaticResource NullToVis}}">
+            <StackPanel>
+              <m:ToolRow Label="{m:T '불투명도'}">
+                <StackPanel Orientation="Horizontal">
+                  <Slider Width="110" Minimum="0" Maximum="1" Value="{Binding Opacity}" SmallChange="0.05" LargeChange="0.1" />
+                  <TextBlock Text="{Binding Opacity, StringFormat={}{0:P0}}" Width="40" TextAlignment="Right" VerticalAlignment="Center" />
+                </StackPanel>
+              </m:ToolRow>
+              <m:ToolRow Label="{m:T '블렌드'}">
+                <ComboBox Width="140" SelectedItem="{Binding Blend}"
+                          ItemsSource="{Binding DataContext.BlendModes, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+              </m:ToolRow>
+              <m:ToolRow Label="{m:T '프레임 오프셋'}">
+                <TextBox Width="64" Text="{Binding Offset, UpdateSourceTrigger=LostFocus}" />
+              </m:ToolRow>
+              <m:ToolRow Label="{m:T '마지막 프레임 유지'}">
+                <CheckBox IsChecked="{Binding HoldFrame}" />
+              </m:ToolRow>
+              <m:ToolRow Label="{m:T '미리 곱한 알파'}" Hint="{m:T '합성 프로그램이 알파를 곱해 저장한 이미지'}">
+                <CheckBox IsChecked="{Binding Premultiplied}" />
+              </m:ToolRow>
+            </StackPanel>
+          </m:ToolSection>
+
+          <m:ToolSection Header="{m:T '프리셋'}">
+            <StackPanel Margin="12,6">
+              <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource Button.Standard}" Content="{m:T '적용'}" Margin="6,0,0,0" Command="{Binding ApplySelectedPresetCommand}" />
+                <ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}" />
+              </DockPanel>
+              <DockPanel Margin="0,6,0,0">
+                <Button DockPanel.Dock="Right" Style="{StaticResource Button.Standard}" Content="{m:T '저장'}" Margin="6,0,0,0" Command="{Binding SavePresetCommand}" />
+                <TextBox Text="{Binding PresetName, UpdateSourceTrigger=PropertyChanged}" ToolTip="{m:T '새 프리셋 이름 (같은 이름이면 덮어씀)'}" />
+              </DockPanel>
+              <CheckBox Content="{m:T '폴더를 열 때 선택한 프리셋 자동 적용'}" IsChecked="{Binding AutoApply}" Margin="0,8,0,0" />
+              <WrapPanel Margin="0,6,0,0">
+                <Button Style="{StaticResource Button.Ghost}" Content="{m:T '삭제'}" Command="{Binding DeletePresetCommand}" />
+                <Button Style="{StaticResource Button.Ghost}" Content="{m:T '가져오기…'}" Command="{Binding ImportPresetsCommand}" />
+                <Button Style="{StaticResource Button.Ghost}" Content="{m:T '내보내기…'}" Command="{Binding ExportPresetsCommand}" />
+              </WrapPanel>
+            </StackPanel>
+          </m:ToolSection>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </m:ToolPanel>
+</UserControl>
