@@ -1,0 +1,18 @@
+<!-- 아이콘 글리프 표 (Segoe Fluent Icons). 값은 SideBySide.Modules.Glyphs와 같아 메뉴·도구 패널·설정이 같은 아이콘을 쓴다. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:m="clr-namespace:SideBySide.Modules;assembly=SideBySide.Modules.Abstractions">
+  <x:Static x:Key="Icon.Tools" Member="m:Glyphs.Tools" />
+  <x:Static x:Key="Icon.Resize" Member="m:Glyphs.Resize" />
+  <x:Static x:Key="Icon.Renumber" Member="m:Glyphs.Renumber" />
+  <x:Static x:Key="Icon.SequenceViewer" Member="m:Glyphs.SequenceViewer" />
+  <x:Static x:Key="Icon.Cleaner" Member="m:Glyphs.Cleaner" />
+  <x:Static x:Key="Icon.LanShare" Member="m:Glyphs.LanShare" />
+  <x:Static x:Key="Icon.DirectConnect" Member="m:Glyphs.DirectConnect" />
+  <x:Static x:Key="Icon.Shield" Member="m:Glyphs.Shield" />
+  <x:Static x:Key="Icon.Close" Member="m:Glyphs.Close" />
+  <x:Static x:Key="Icon.Window" Member="m:Glyphs.Window" />
+  <x:Static x:Key="Icon.Panel" Member="m:Glyphs.Panel" />
+  <x:Static x:Key="Icon.Check" Member="m:Glyphs.Check" />
+  <x:Static x:Key="Icon.Dropdown" Member="m:Glyphs.Down" />
+</ResourceDictionary>

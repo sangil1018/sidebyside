@@ -20,7 +20,8 @@ public static partial class L
     /// <summary>번역한 뒤 <see cref="string.Format(IFormatProvider, string, object[])"/>. 원문의 {0}, {1:N0} 등은 영어에도 같은 번호로 둔다.</summary>
     public static string F(string koreanFormat, params object?[] args) => string.Format(CultureInfo.CurrentCulture, T(koreanFormat), args);
 
-    internal static string Translate(string korean, bool english) => english && English.TryGetValue(korean, out var text) ? text : korean;
+    internal static string Translate(string korean, bool english)
+        => english && (English.TryGetValue(korean, out var text) || EnglishModules.TryGetValue(korean, out text)) ? text : korean;
 
-    internal static IReadOnlyDictionary<string, string> EnglishTable => English;
+    internal static IReadOnlyDictionary<string, string> EnglishTable => English.Concat(EnglishModules).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
 }

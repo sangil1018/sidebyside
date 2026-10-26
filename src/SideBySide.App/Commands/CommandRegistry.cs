@@ -159,6 +159,9 @@ public static class CommandRegistry
         new(CommandIds.DiffUndo, L.T("실행 취소"), Key.Z, Ctrl, CommandScope.Diff),
         new(CommandIds.DiffToggleEdit, L.T("편집 모드"), Key.E, Ctrl, CommandScope.Diff),
         new(CommandIds.DiffClose, L.T("비교 닫기"), Key.Escape, None, CommandScope.Diff),
+
+        // 도구 모듈 (켜진 모듈만 실행됨, 기본 단축키 없음)
+        .. Modules.ModuleCatalog.All.Select(m => new CommandDefinition(m.CommandId, L.F("도구: {0}", m.Title), Key.None, None, CommandScope.Global)),
     ];
 
     private static Dictionary<string, CommandDefinition> _primary = Defaults.Where(d => !d.IsAlternate).ToDictionary(d => d.Id);

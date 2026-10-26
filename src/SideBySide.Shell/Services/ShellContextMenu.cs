@@ -18,8 +18,14 @@ public sealed class ShellContextMenu(IOwnerWindow owner) : IContextMenuService
     private IContextMenu2? _menu2;
     private IContextMenu3? _menu3;
 
-    public void ShowForItems(IReadOnlyList<string> paths, int screenX, int screenY, bool extended, Func<string, bool>? interceptVerb = null)
-        => WithItemMenu(owner.Handle, paths, menuPtr => Show(menuPtr, screenX, screenY, extended, interceptVerb));
+    public void ShowForItems(IReadOnlyList<string> paths, int screenX, int screenY, bool extended, Func<string, bool>? interceptVerb = null, IReadOnlyList<ShellMenuItem>? appItems = null)
+    {
+        Action? appAction = null;
+        WithItemMenu(owner.Handle, paths, menuPtr => appAction = Show(menuPtr, screenX, screenY, extended, interceptVerb, appItems));
+
+        // 앱 항목은 셸 메뉴·COM 개체를 모두 정리한 뒤 실행 (모듈 창을 띄워도 메뉴가 남아 있지 않게)
+        appAction?.Invoke();
+    }
 
     /// <summary>
     /// 메뉴를 띄우지 않고 셸 동사(예: "eject")를 실행. 셸 확장이 오래 걸릴 수 있어 별도 STA 스레드에서 실행.
@@ -114,9 +120,10 @@ public sealed class ShellContextMenu(IOwnerWindow owner) : IContextMenuService
         }
     }
 
-    public void ShowForFolder(string folderPath, int screenX, int screenY, bool extended, Func<string, bool>? interceptVerb = null)
+    public void ShowForFolder(string folderPath, int screenX, int screenY, bool extended, Func<string, bool>? interceptVerb = null, IReadOnlyList<ShellMenuItem>? appItems = null)
     {
         IntPtr pidl = IntPtr.Zero, folderPtr = IntPtr.Zero, menuPtr = IntPtr.Zero;
+        Action? appAction = null;
         try
         {
             if (SHParseDisplayName(folderPath, IntPtr.Zero, out pidl, 0, out _) != 0) return;
@@ -127,7 +134,7 @@ public sealed class ShellContextMenu(IOwnerWindow owner) : IContextMenuService
             var iidMenu = typeof(IContextMenu).GUID;
             if (folder.CreateViewObject(owner.Handle, ref iidMenu, out menuPtr) != 0) return;
 
-            Show(menuPtr, screenX, screenY, extended, interceptVerb);
+            appAction = Show(menuPtr, screenX, screenY, extended, interceptVerb, appItems);
         }
         finally
         {
@@ -135,9 +142,12 @@ public sealed class ShellContextMenu(IOwnerWindow owner) : IContextMenuService
             if (folderPtr != IntPtr.Zero) Marshal.Release(folderPtr);
             if (pidl != IntPtr.Zero) Marshal.FreeCoTaskMem(pidl);
         }
+
+        appAction?.Invoke();
     }
 
-    private void Show(IntPtr menuPtr, int x, int y, bool extended, Func<string, bool>? interceptVerb)
+    /// <summary>메뉴를 띄우고 셸 명령이면 바로 실행한다. 앱 항목을 고르면 그 동작을 돌려준다 (호출자가 정리 후 실행).</summary>
+    private Action? Show(IntPtr menuPtr, int x, int y, bool extended, Func<string, bool>? interceptVerb, IReadOnlyList<ShellMenuItem>? appItems)
     {
         var menu = (IContextMenu)Marshal.GetObjectForIUnknown(menuPtr);
         _menu2 = menu as IContextMenu2;
@@ -145,19 +155,22 @@ public sealed class ShellContextMenu(IOwnerWindow owner) : IContextMenuService
 
         var hMenu = CreatePopupMenu();
         var source = HwndSource.FromHwnd(owner.Handle);
+        using var app = new AppMenuItems(owner.Handle);
         try
         {
             var flags = CMF_NORMAL | CMF_EXPLORE | CMF_CANRENAME | (extended ? CMF_EXTENDEDVERBS : 0);
-            if (menu.QueryContextMenu(hMenu, 0, FirstCommand, LastCommand, flags) < 0) return;
+            if (menu.QueryContextMenu(hMenu, 0, FirstCommand, LastCommand, flags) < 0) return null;
+            if (appItems is { Count: > 0 }) app.InsertAtTop(hMenu, appItems);
 
             source?.AddHook(WndProc);
             var command = TrackPopupMenuEx(hMenu, TPM_RETURNCMD | TPM_RIGHTBUTTON, x, y, owner.Handle, IntPtr.Zero);
             source?.RemoveHook(WndProc);
-            if (command < FirstCommand) return;
+            if (app.TryGetAction(command, out var appAction)) return appAction;
+            if (command < FirstCommand || command > LastCommand) return null;
 
             var offset = command - FirstCommand;
             var verb = GetVerb(menu, offset);
-            if (verb is not null && interceptVerb?.Invoke(verb) == true) return;
+            if (verb is not null && interceptVerb?.Invoke(verb) == true) return null;
 
             var invoke = new CMINVOKECOMMANDINFOEX
             {
@@ -172,6 +185,7 @@ public sealed class ShellContextMenu(IOwnerWindow owner) : IContextMenuService
                 ptInvoke = new POINT { X = x, Y = y },
             };
             menu.InvokeCommand(ref invoke);
+            return null;
         }
         finally
         {

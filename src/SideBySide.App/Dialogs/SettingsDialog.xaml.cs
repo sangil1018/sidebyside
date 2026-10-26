@@ -1,11 +1,14 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SideBySide.App.Commands;
+using SideBySide.App.Modules;
 using SideBySide.App.Services;
 using SideBySide.App.ViewModels;
 using SideBySide.Core.Settings;
+using SideBySide.Core.Theming;
 using SideBySide.Core.Localization;
 
 namespace SideBySide.App.Dialogs;
@@ -35,11 +38,19 @@ public partial class SettingsDialog : Window
     private readonly Dictionary<string, string> _bindings;
     private readonly List<ShortcutRow> _rows;
     private readonly Dictionary<SystemPlace, CheckBox> _placeBoxes = [];
+    private readonly Dictionary<string, (CheckBox Enabled, ComboBox Mode, ModulePreference Original)> _moduleRows = [];
+    private readonly List<RadioButton> _swatches = [];
+    private readonly Action<string>? _previewAccent;
+    private string _accent;
+    private bool _syncingAccent;
     private Key _pendingKey = Key.None;
     private ModifierKeys _pendingModifiers;
 
-    public SettingsDialog(AppPreferences current)
+    /// <param name="previewAccent">포인트 색을 고를 때마다 바로 적용해 보여 주는 콜백 (취소 시 되돌리는 것은 호출자 몫).</param>
+    public SettingsDialog(AppPreferences current, Action<string>? previewAccent = null)
     {
+        _previewAccent = previewAccent;
+        _accent = current.AccentColor;
         InitializeComponent();
         (current.Theme switch
         {
@@ -76,6 +87,9 @@ public partial class SettingsDialog : Window
             SystemPlacesPanel.Children.Add(row);
         }
 
+        BuildAccentSwatches();
+        BuildModuleRows(current.Modules);
+
         _bindings = new Dictionary<string, string>(current.KeyBindings);
         _rows = CommandRegistry.Defaults
             .Where(d => !d.IsAlternate && !d.IsFixed)
@@ -94,7 +108,142 @@ public partial class SettingsDialog : Window
         if (GeneralPage is null) return; // InitializeComponent 중
         GeneralPage.Visibility = TabGeneral.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         SidebarPage.Visibility = TabSidebar.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        ModulesPage.Visibility = TabModules.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         ShortcutsPage.Visibility = TabShortcuts.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    // ── 포인트 색 ───────────────────────────────────────────────────
+
+    private void BuildAccentSwatches()
+    {
+        AddSwatch(AccentPalette.Default, L.T("기본"), new Rgb(0x2F, 0x6D, 0xB5), null);
+        if (ThemeManager.ResolveAccent(AccentPalette.System) is { } system)
+            AddSwatch(AccentPalette.System, L.T("Windows 강조색"), system, SideBySide.Modules.Glyphs.Settings);
+        foreach (var (name, color) in AccentPalette.Swatches) AddSwatch(color.ToString(), L.T(name), color, null);
+
+        SyncAccentControls();
+    }
+
+    private void AddSwatch(string value, string name, Rgb color, string? glyph)
+    {
+        var swatch = new RadioButton
+        {
+            Style = (Style)FindResource("Settings.Swatch"),
+            GroupName = "Accent",
+            Tag = value,
+            ToolTip = name,
+            Background = new SolidColorBrush(Color.FromRgb(color.R, color.G, color.B)),
+        };
+        if (glyph is not null)
+        {
+            var text = AccentPalette.ContrastRatio(color, new Rgb(0xFF, 0xFF, 0xFF)) >= 3 ? Brushes.White : Brushes.Black;
+            swatch.Content = new TextBlock { Text = glyph, Style = (Style)FindResource("Glyph"), FontSize = 11, Foreground = text };
+        }
+
+        swatch.Checked += (_, _) =>
+        {
+            if (_syncingAccent) return;
+            SetAccent(value);
+        };
+        _swatches.Add(swatch);
+        AccentSwatches.Children.Add(swatch);
+    }
+
+    private void OnAccentHexChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_syncingAccent || AccentPreview is null) return; // InitializeComponent 중
+        if (Rgb.TryParse(AccentHex.Text, out var color)) SetAccent(color.ToString());
+    }
+
+    private void SetAccent(string value)
+    {
+        _accent = value;
+        SyncAccentControls();
+        _previewAccent?.Invoke(value);
+    }
+
+    /// <summary>견본 선택·사용자 지정 입력란·미리보기 원을 현재 값에 맞춘다.</summary>
+    private void SyncAccentControls()
+    {
+        _syncingAccent = true;
+        try
+        {
+            foreach (var swatch in _swatches) swatch.IsChecked = string.Equals((string)swatch.Tag, _accent, StringComparison.OrdinalIgnoreCase);
+            if (Rgb.TryParse(_accent, out var custom) && !AccentHex.IsKeyboardFocusWithin) AccentHex.Text = custom.ToString();
+            AccentPreview.Background = ThemeManager.ResolveAccent(_accent) is { } c
+                ? new SolidColorBrush(Color.FromRgb(c.R, c.G, c.B))
+                : Brushes.Transparent;
+        }
+        finally
+        {
+            _syncingAccent = false;
+        }
+    }
+
+    // ── 모듈 ────────────────────────────────────────────────────────
+
+    private void BuildModuleRows(IReadOnlyDictionary<string, ModulePreference> current)
+    {
+        foreach (var module in ModuleCatalog.All)
+        {
+            var original = current.TryGetValue(module.Id, out var p) ? p : new ModulePreference(false, ModuleOpenMode.Default);
+            if (ModulesPanel.Children.Count > 0) ModulesPanel.Children.Add(new Border { Style = (Style)FindResource("Settings.Divider") });
+
+            var row = new Grid { Style = (Style)FindResource("Settings.Row") };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var icon = new TextBlock { Text = module.Glyph, Style = (Style)FindResource("Glyph"), Margin = new Thickness(0, 2, 14, 0), VerticalAlignment = VerticalAlignment.Top };
+            var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 16, 0) };
+            text.Children.Add(new TextBlock { Text = module.Title, Style = (Style)FindResource("Settings.RowTitle") });
+            text.Children.Add(new TextBlock { Text = module.Description, Style = (Style)FindResource("Settings.RowHint") });
+            if (module.UsesElevation)
+            {
+                var admin = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+                admin.Children.Add(new TextBlock { Text = SideBySide.Modules.Glyphs.Shield, Style = (Style)FindResource("Glyph"), FontSize = 11, Margin = new Thickness(0, 0, 4, 0) });
+                admin.Children.Add(new TextBlock { Text = L.T("일부 작업은 관리자 권한(UAC) 확인이 필요합니다."), Style = (Style)FindResource("Text.Secondary") });
+                text.Children.Add(admin);
+            }
+
+            var effective = original.OpenMode == ModuleOpenMode.Default ? module.DefaultOpenMode : original.OpenMode;
+            var mode = new ComboBox { Width = 120, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 16, 0), ToolTip = L.T("여는 곳") };
+            mode.Items.Add(new ComboBoxItem { Content = L.T("오른쪽 패널"), Tag = ModuleOpenMode.Panel });
+            mode.Items.Add(new ComboBoxItem { Content = L.T("별도 창"), Tag = ModuleOpenMode.Window });
+            mode.SelectedIndex = effective == ModuleOpenMode.Window ? 1 : 0;
+
+            var enabled = new CheckBox { IsChecked = original.Enabled, VerticalAlignment = VerticalAlignment.Center, ToolTip = L.T("사용") };
+            mode.IsEnabled = original.Enabled;
+            enabled.Checked += (_, _) => mode.IsEnabled = true;
+            enabled.Unchecked += (_, _) => mode.IsEnabled = false;
+
+            Grid.SetColumn(text, 1);
+            Grid.SetColumn(mode, 2);
+            Grid.SetColumn(enabled, 3);
+            row.Children.Add(icon);
+            row.Children.Add(text);
+            row.Children.Add(mode);
+            row.Children.Add(enabled);
+            _moduleRows[module.Id] = (enabled, mode, original);
+            ModulesPanel.Children.Add(row);
+        }
+    }
+
+    private Dictionary<string, ModulePreference> ModuleResult()
+    {
+        var result = new Dictionary<string, ModulePreference>();
+        foreach (var (id, (enabled, mode, original)) in _moduleRows)
+        {
+            var chosen = (ModuleOpenMode)((ComboBoxItem)mode.SelectedItem).Tag;
+            var descriptor = ModuleCatalog.Find(id)!;
+
+            // 기본값을 그대로 둔 모듈은 '기본'으로 남겨 두어 모듈 기본값을 따라가게 한다
+            var stored = original.OpenMode == ModuleOpenMode.Default && chosen == descriptor.DefaultOpenMode ? ModuleOpenMode.Default : chosen;
+            result[id] = new ModulePreference(enabled.IsChecked == true, stored);
+        }
+
+        return result;
     }
 
     // ── 단축키 ──────────────────────────────────────────────────────
@@ -230,7 +379,9 @@ public partial class SettingsDialog : Window
             shortcut,
             ShortcutWhenClosed.IsChecked == true,
             places,
-            new Dictionary<string, string>(_bindings));
+            new Dictionary<string, string>(_bindings),
+            _accent,
+            ModuleResult());
         DialogResult = true;
     }
 }

@@ -33,4 +33,21 @@ public static class VisualTree
 
         return null;
     }
+
+    /// <summary>하위 요소 중 <typeparamref name="T"/> 전부 (찾은 요소의 안쪽은 더 내려가지 않는다).</summary>
+    public static IEnumerable<T> FindDescendants<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T match)
+            {
+                yield return match;
+                continue;
+            }
+
+            foreach (var found in FindDescendants<T>(child)) yield return found;
+        }
+    }
 }

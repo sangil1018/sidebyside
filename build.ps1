@@ -14,7 +14,7 @@ param(
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
-dotnet test tests/SideBySide.Core.Tests -c $Configuration
+dotnet test SideBySide.sln -c $Configuration
 if ($LASTEXITCODE -ne 0) { throw "테스트 실패" }
 
 $out = Join-Path "artifacts" ($(if ($SelfContained) { "$Runtime-self-contained" } else { $Runtime }))

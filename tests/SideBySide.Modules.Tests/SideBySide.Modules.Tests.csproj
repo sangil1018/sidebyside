@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- 모듈·승격 헬퍼 테스트 (WPF 이미지 코덱·소켓·파일 시스템을 실제로 사용, Windows 전용) -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SideBySide.App\SideBySide.App.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SideBySide.Modules.Resize\SideBySide.Modules.Resize.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SideBySide.Modules.SeqViewer\SideBySide.Modules.SeqViewer.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SideBySide.Modules.TempCleaner\SideBySide.Modules.TempCleaner.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SideBySide.Modules.LanShare\SideBySide.Modules.LanShare.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SideBySide.Modules.DirectConnect\SideBySide.Modules.DirectConnect.csproj" />
+  </ItemGroup>
+
+</Project>

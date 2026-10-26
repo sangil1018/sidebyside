@@ -20,6 +20,14 @@
   <ItemGroup>
     <ProjectReference Include="..\SideBySide.Core\SideBySide.Core.csproj" />
     <ProjectReference Include="..\SideBySide.Shell\SideBySide.Shell.csproj" />
+    <ProjectReference Include="..\SideBySide.Modules.Abstractions\SideBySide.Modules.Abstractions.csproj" />
+    <!-- 모듈은 실행 파일에 함께 들어가지만, 처음 열 때까지 로드되지 않는다 (Modules/ModuleCatalog.cs) -->
+    <ProjectReference Include="..\Modules\SideBySide.Modules.Resize\SideBySide.Modules.Resize.csproj" />
+    <ProjectReference Include="..\Modules\SideBySide.Modules.SeqRenumber\SideBySide.Modules.SeqRenumber.csproj" />
+    <ProjectReference Include="..\Modules\SideBySide.Modules.SeqViewer\SideBySide.Modules.SeqViewer.csproj" />
+    <ProjectReference Include="..\Modules\SideBySide.Modules.TempCleaner\SideBySide.Modules.TempCleaner.csproj" />
+    <ProjectReference Include="..\Modules\SideBySide.Modules.LanShare\SideBySide.Modules.LanShare.csproj" />
+    <ProjectReference Include="..\Modules\SideBySide.Modules.DirectConnect\SideBySide.Modules.DirectConnect.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,6 +36,10 @@
 
   <ItemGroup>
     <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SideBySide.Modules.Tests" />
   </ItemGroup>
 
 </Project>

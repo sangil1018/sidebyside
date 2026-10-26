@@ -184,6 +184,44 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     public static extern uint TrackPopupMenuEx(IntPtr hmenu, uint fuFlags, int x, int y, IntPtr hwnd, IntPtr lptpm);
 
+    // ── 앱 메뉴 항목 (우클릭 메뉴 맨 위에 넣는 모듈 항목) ──────────────
+    public const uint MIIM_STATE = 0x1;
+    public const uint MIIM_ID = 0x2;
+    public const uint MIIM_SUBMENU = 0x4;
+    public const uint MIIM_STRING = 0x40;
+    public const uint MIIM_BITMAP = 0x80;
+    public const uint MIIM_FTYPE = 0x100;
+    public const uint MFT_SEPARATOR = 0x800;
+    public const uint MFS_DISABLED = 0x3;
+    public const int COLOR_MENUTEXT = 7;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct MENUITEMINFO
+    {
+        public int cbSize;
+        public uint fMask;
+        public uint fType;
+        public uint fState;
+        public uint wID;
+        public IntPtr hSubMenu;
+        public IntPtr hbmpChecked;
+        public IntPtr hbmpUnchecked;
+        public IntPtr dwItemData;
+        public string? dwTypeData;
+        public uint cch;
+        public IntPtr hbmpItem;
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool InsertMenuItem(IntPtr hMenu, uint item, [MarshalAs(UnmanagedType.Bool)] bool byPosition, ref MENUITEMINFO info);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetSysColor(int index);
+
+    [DllImport("gdi32.dll", SetLastError = true)]
+    public static extern IntPtr CreateDIBSection(IntPtr hdc, ref BITMAPINFOHEADER bmi, uint usage, out IntPtr bits, IntPtr section, uint offset);
+
     // ── Child window (preview host) ──────────────────────────────────
     public const int WS_CHILD = 0x40000000;
     public const int WS_VISIBLE = 0x10000000;

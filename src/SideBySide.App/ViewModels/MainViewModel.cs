@@ -5,6 +5,7 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SideBySide.App.Commands;
 using SideBySide.App.Infrastructure;
+using SideBySide.App.Modules;
 using SideBySide.App.Services;
 using SideBySide.Core.Diff;
 using SideBySide.Core.Filtering;
@@ -29,6 +30,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly FileTransferService _transfers;
     private readonly IDriveService _drives;
     private readonly IFileManagerRegistration _fileManager;
+    private readonly ModuleManager _modules;
     private readonly DispatcherTimer _noticeTimer;
     private CancellationTokenSource? _freeSpaceCts;
     private string? _freeSpaceRoot;
@@ -89,9 +91,11 @@ public sealed partial class MainViewModel : ObservableObject
     private TaskbarItemProgressState _taskbarState;
 
     public MainViewModel(ExplorerContext ctx, ThemeManager theme, CommandHost commands, UndoService undo,
-        FileTransferService transfers, IDriveService drives, IFileManagerRegistration fileManager)
+        FileTransferService transfers, IDriveService drives, IFileManagerRegistration fileManager, ModuleManager modules)
     {
         _ctx = ctx;
+        _modules = modules;
+        modules.Attach(this);
         _fileManager = fileManager;
         _theme = theme;
         _undo = undo;
@@ -153,6 +157,9 @@ public sealed partial class MainViewModel : ObservableObject
     public System.Collections.ObjectModel.ObservableCollection<OperationViewModel> Operations => _transfers.Operations;
 
     public PreviewViewModel Preview { get; }
+
+    /// <summary>켜고 끌 수 있는 도구 모듈 (오른쪽 도구 패널의 데이터 원본).</summary>
+    public ModuleManager Tools => _modules;
 
     public bool IsRightPaneVisible => IsDualPane;
 
@@ -258,7 +265,7 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     /// <summary>창 닫기 전 확인 (파일 비교에 저장 안 된 변경이 있으면).</summary>
-    public bool CanClose() => ActiveDiff?.ConfirmClose() ?? true;
+    public bool CanClose() => (ActiveDiff?.ConfirmClose() ?? true) && _modules.CanCloseAll();
 
     // ── 뷰에서 직접 호출 ────────────────────────────────────────────
 
@@ -328,12 +335,18 @@ public sealed partial class MainViewModel : ObservableObject
         Activate(pane);
         var tab = pane.ActiveTab;
         var paths = tab.SelectedPaths;
+        var folder = tab.IsThisPc || TabViewModel.IsVirtualFolder(tab.Path) ? null : tab.Path;
+        var items = !onBackground && paths.Count > 0;
+        // 켜진 모듈 중 대상에 맞는 도구를 메뉴 맨 위에 (꺼진 모듈은 검사도 하지 않는다)
+        var appItems = _modules.HasEnabledModules
+            ? _modules.BuildMenu(new MenuContext(items ? paths : [], folder, !items))
+            : null;
         Run(() =>
         {
-            if (!onBackground && paths.Count > 0)
-                _ctx.ContextMenu.ShowForItems(paths, screenX, screenY, extended, HandleShellVerb);
+            if (items)
+                _ctx.ContextMenu.ShowForItems(paths, screenX, screenY, extended, HandleShellVerb, appItems);
             else if (!tab.IsThisPc && Directory.Exists(tab.Path))
-                _ctx.ContextMenu.ShowForFolder(tab.Path, screenX, screenY, extended, HandleShellVerb);
+                _ctx.ContextMenu.ShowForFolder(tab.Path, screenX, screenY, extended, HandleShellVerb, appItems);
         });
     }
 
@@ -393,6 +406,8 @@ public sealed partial class MainViewModel : ObservableObject
         c.Register(CommandIds.ToggleHidden, () => ShowHidden = !ShowHidden);
         c.Register(CommandIds.ToggleTheme, () => _ctx.Settings.Theme = _theme.Cycle());
         c.Register(CommandIds.OpenSettings, OpenSettings);
+        foreach (var module in ModuleCatalog.All)
+            c.Register(module.CommandId, () => _modules.OpenFromToolbar(module.Id), () => _modules.IsEnabled(module));
         c.Register(CommandIds.ViewDetails, () => ViewMode = ViewMode.Details);
         c.Register(CommandIds.ViewMediumIcons, () => { if (!IsCompareMode) ViewMode = ViewMode.MediumIcons; });
         c.Register(CommandIds.ViewLargeIcons, () => { if (!IsCompareMode) ViewMode = ViewMode.LargeIcons; });
@@ -815,9 +830,35 @@ public sealed partial class MainViewModel : ObservableObject
             settings.OpenShortcut,
             HotkeyAgent.IsEnabled,
             settings.SystemPlaces.ToList(),
-            new Dictionary<string, string>(settings.KeyBindings));
+            new Dictionary<string, string>(settings.KeyBindings),
+            settings.AccentColor,
+            ModuleCatalog.All.ToDictionary(m => m.Id, m => new ModulePreference(
+                _modules.IsEnabled(m),
+                settings.Modules.TryGetValue(m.Id, out var ms) ? ms.OpenMode : Core.Settings.ModuleOpenMode.Default)));
         var result = _ctx.Dialogs.EditPreferences(current);
-        if (result is null) return;
+        if (result is null)
+        {
+            // 설정 창에서 미리 보여 준 포인트 색을 되돌린다
+            _theme.Accent = settings.AccentColor;
+            _theme.Apply(settings.Theme);
+            return;
+        }
+
+        if (!string.Equals(result.AccentColor, current.AccentColor, StringComparison.Ordinal) || !string.Equals(_theme.Accent, result.AccentColor, StringComparison.Ordinal))
+        {
+            settings.AccentColor = result.AccentColor;
+            _theme.Accent = result.AccentColor;
+            _theme.Apply(settings.Theme);
+        }
+
+        var moduleChanges = result.Modules
+            .Where(kv => !current.Modules.TryGetValue(kv.Key, out var before) || before != kv.Value)
+            .ToDictionary(kv => kv.Key, kv => (kv.Value.Enabled, kv.Value.OpenMode));
+        if (moduleChanges.Count > 0)
+        {
+            _modules.Apply(moduleChanges);
+            Commands.RaiseCanExecuteChanged();
+        }
 
         if (result.Language != current.Language)
         {

@@ -68,6 +68,21 @@ public sealed class JsonSettingsStore(string path) : ISettingsStore
             // v0(버전 필드 없음) → v1: 형식 동일, 버전만 기록
         }
 
+        if (version < 2)
+        {
+            // v1 → v2: 모듈·포인트 색 추가. 새 필드는 기본값(모든 모듈 꺼짐, 기본 강조색)으로 채워진다
+        }
+
+        // 모듈 데이터가 비정상적으로 크면 그 모듈 데이터만 버린다 (다른 설정은 유지)
+        if (node["Modules"] is JsonObject modules)
+        {
+            foreach (var (_, module) in modules)
+            {
+                if (module is JsonObject m && m["Data"] is { } data && data.ToJsonString().Length > ModuleSettings.MaxDataLength)
+                    m.Remove("Data");
+            }
+        }
+
         node["Version"] = AppSettings.CurrentVersion;
     }
 

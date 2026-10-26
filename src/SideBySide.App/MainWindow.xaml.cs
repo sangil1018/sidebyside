@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using SideBySide.App.Commands;
 using SideBySide.App.Infrastructure;
+using SideBySide.App.Modules;
 using SideBySide.App.Services;
 using SideBySide.App.ViewModels;
 using SideBySide.App.Views;
@@ -29,6 +30,16 @@ public partial class MainWindow : Window
     private readonly System.Windows.Threading.DispatcherTimer _deviceTimer;
     private bool _syncingScroll;
 
+    /// <summary>오른쪽 열에 지금 보이는 것 (너비를 각각 따로 기억).</summary>
+    private enum SideColumn
+    {
+        None,
+        Preview,
+        Tools,
+    }
+
+    private SideColumn _side;
+
     public MainWindow(MainViewModel viewModel, AppSettings settings, CommandHost commands)
     {
         _settings = settings;
@@ -45,6 +56,10 @@ public partial class MainWindow : Window
         UpdateColumns();
 
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        viewModel.Tools.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ModuleManager.HasPanelTools)) UpdateColumns();
+        };
         viewModel.FocusPaneRequested += (_, pane) => PaneView(pane).FocusList();
         viewModel.FocusAddressRequested += (_, pane) => PaneView(pane).FocusAddress();
         viewModel.FocusSearchRequested += (_, pane) => PaneView(pane).FocusSearch();
@@ -122,17 +137,31 @@ public partial class MainWindow : Window
         RightColumn.MinWidth = vm.IsRightPaneVisible ? 240 : 0;
         RightPane.Visibility = PaneSplitter.Visibility = vm.IsRightPaneVisible ? Visibility.Visible : Visibility.Collapsed;
 
-        if (vm.ShowPreview)
+        // 오른쪽 열: 열린 도구가 있으면 도구 패널, 아니면 미리보기 (너비는 각자 저장)
+        var side = vm.Tools.HasPanelTools ? SideColumn.Tools : vm.ShowPreview ? SideColumn.Preview : SideColumn.None;
+        if (side != _side)
         {
-            if (PreviewColumn.Width.Value == 0) PreviewColumn.Width = new GridLength(Math.Max(200, _settings.PreviewWidth));
-        }
-        else if (PreviewColumn.Width.Value > 0)
-        {
-            _settings.PreviewWidth = PreviewColumn.ActualWidth;
-            PreviewColumn.Width = new GridLength(0);
+            RememberSideWidth();
+            PreviewColumn.Width = side switch
+            {
+                SideColumn.Tools => new GridLength(Math.Max(300, _settings.ToolPanelWidth)),
+                SideColumn.Preview => new GridLength(Math.Max(200, _settings.PreviewWidth)),
+                _ => new GridLength(0),
+            };
+            PreviewColumn.MinWidth = side == SideColumn.Tools ? 300 : 0;
+            _side = side;
         }
 
-        PreviewPane.Visibility = PreviewSplitter.Visibility = vm.ShowPreview ? Visibility.Visible : Visibility.Collapsed;
+        PreviewPane.Visibility = side == SideColumn.Preview ? Visibility.Visible : Visibility.Collapsed;
+        ToolPanel.Visibility = side == SideColumn.Tools ? Visibility.Visible : Visibility.Collapsed;
+        PreviewSplitter.Visibility = side == SideColumn.None ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void RememberSideWidth()
+    {
+        if (PreviewColumn.ActualWidth <= 0) return;
+        if (_side == SideColumn.Tools) _settings.ToolPanelWidth = PreviewColumn.ActualWidth;
+        else if (_side == SideColumn.Preview) _settings.PreviewWidth = PreviewColumn.ActualWidth;
     }
 
     private void SyncScroll(FilePane target, double offset)
@@ -242,7 +271,7 @@ public partial class MainWindow : Window
             Maximized = WindowState == WindowState.Maximized,
         };
         if (SidebarColumn.ActualWidth > 0) _settings.SidebarWidth = SidebarColumn.ActualWidth;
-        if (PreviewColumn.ActualWidth > 0) _settings.PreviewWidth = PreviewColumn.ActualWidth;
+        RememberSideWidth();
     }
 
     private void OnClosing(object? sender, CancelEventArgs e)
@@ -253,8 +282,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        ViewModel.SaveState();
         SavePlacement();
+        ViewModel.Tools.Dispose(); // 모듈 창 위치·데이터를 설정에 남기고 소켓·작업자를 정리 (설정 저장 전)
+        ViewModel.SaveState();
     }
 
     // ── 제목 표시줄 ─────────────────────────────────────────────────
@@ -281,6 +311,33 @@ public partial class MainWindow : Window
         var menu = new ContextMenu { PlacementTarget = NewButton, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
         menu.Items.Add(MenuItemFor(CommandIds.NewFolder, ""));
         menu.Items.Add(MenuItemFor(CommandIds.NewTextFile, ""));
+        menu.IsOpen = true;
+    }
+
+    /// <summary>도구 모듈 메뉴: 켜진 모듈만. 현재 선택을 대상으로 연다.</summary>
+    private void OnToolsMenu(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu { PlacementTarget = ToolsButton, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        foreach (var module in ViewModel.Tools.EnabledModules)
+        {
+            var def = CommandRegistry.Get(module.CommandId);
+            menu.Items.Add(new MenuItem
+            {
+                Header = module.Title,
+                InputGestureText = def.Gesture,
+                Command = ViewModel.Commands[module.CommandId],
+                Icon = new TextBlock { Text = module.Glyph, Style = (Style)FindResource("Glyph") },
+                ToolTip = module.Description,
+            });
+        }
+
+        menu.Items.Add(new Separator());
+        menu.Items.Add(new MenuItem
+        {
+            Header = L.T("모듈 설정…"),
+            Command = ViewModel.Commands[CommandIds.OpenSettings],
+            Icon = new TextBlock { Text = SideBySide.Modules.Glyphs.Settings, Style = (Style)FindResource("Glyph") },
+        });
         menu.IsOpen = true;
     }
 

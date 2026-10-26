@@ -1,0 +1,91 @@
+<UserControl x:Class="SideBySide.Modules.SeqRenumber.RenumberView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:m="urn:sidebyside-modules"
+             xmlns:local="clr-namespace:SideBySide.Modules.SeqRenumber"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance local:RenumberViewModel}">
+  <m:ToolPanel Glyph="{x:Static m:Glyphs.Renumber}" Title="{m:T '시퀀스 번호 다시 매기기'}" Subtitle="{Binding Summary}"
+               IsBusy="{Binding IsBusy}" Progress="{Binding Progress}" Status="{Binding Status}" ScrollContent="False">
+    <m:ToolPanel.HeaderTools>
+      <StackPanel Orientation="Horizontal">
+        <Button Style="{StaticResource Button.Icon}" Content="{x:Static m:Glyphs.Refresh}" Command="{Binding ReloadCommand}" ToolTip="{m:T '다시 읽기'}" />
+        <Button Style="{StaticResource Button.Icon}" Content="{x:Static m:Glyphs.OpenFolder}" Command="{Binding BrowseCommand}" ToolTip="{m:T '폴더 열기'}" />
+      </StackPanel>
+    </m:ToolPanel.HeaderTools>
+    <m:ToolPanel.Footer>
+      <StackPanel Orientation="Horizontal">
+        <Button Style="{StaticResource Button.Standard}" Content="{m:T '결과 폴더 열기'}" Margin="0,0,8,0" Command="{Binding OpenOutputCommand}"
+                Visibility="{Binding IsCopyMode, Converter={StaticResource BoolToVis}}" />
+        <Button Style="{StaticResource Button.Primary}" Content="{m:T '적용'}" MinWidth="96" Command="{Binding RunCommand}" />
+      </StackPanel>
+    </m:ToolPanel.Footer>
+
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+
+      <StackPanel>
+        <m:ToolSection Header="{m:T '시퀀스'}">
+          <StackPanel>
+            <m:ToolRow Label="{m:T '대상'}" HorizontalContentAlignment="Stretch">
+              <ComboBox Width="220" ItemsSource="{Binding Sequences}" SelectedItem="{Binding Sequence}" DisplayMemberPath="DisplayName" />
+            </m:ToolRow>
+            <m:ToolRow Label="{m:T '접두어'}" Hint="{m:T '번호 앞부분. 비우면 번호만 남습니다.'}">
+              <TextBox Width="160" Text="{Binding Prefix, UpdateSourceTrigger=PropertyChanged}" />
+            </m:ToolRow>
+            <m:ToolRow Label="{m:T '구분자'}" Hint="{m:T '접두어와 번호 사이 ( _ . - 등).'}">
+              <TextBox Width="48" Text="{Binding Separator, UpdateSourceTrigger=PropertyChanged}" />
+            </m:ToolRow>
+          </StackPanel>
+        </m:ToolSection>
+
+        <m:ToolSection Header="{m:T '번호'}">
+          <StackPanel>
+            <m:ToolRow Label="{m:T '연속 번호로 다시 매기기'}" Hint="{m:T '끄면 원래 번호를 유지하고 접두어·자릿수만 바꿉니다.'}">
+              <CheckBox IsChecked="{Binding Renumber}" />
+            </m:ToolRow>
+            <m:ToolRow Label="{m:T '시작 번호'}" IsEnabled="{Binding Renumber}">
+              <TextBox Width="80" Text="{Binding StartFrame, UpdateSourceTrigger=PropertyChanged}" />
+            </m:ToolRow>
+            <m:ToolRow Label="{m:T '자릿수'}">
+              <TextBox Width="48" Text="{Binding Padding, UpdateSourceTrigger=PropertyChanged}" />
+            </m:ToolRow>
+            <StackPanel Margin="12,6,12,8">
+              <RadioButton GroupName="RenumberMode" Content="{m:T '복사본 만들기 (폴더_renamed)'}" IsChecked="{Binding IsCopyMode}" Margin="0,2" />
+              <RadioButton GroupName="RenumberMode" Content="{m:T '원본 이름 바꾸기'}" IsChecked="{Binding IsRenameMode}" Margin="0,2" />
+            </StackPanel>
+          </StackPanel>
+        </m:ToolSection>
+
+        <Border Background="{DynamicResource Brush.DiffChanged}" CornerRadius="{StaticResource Radius.Card}" Padding="12,8" Margin="{StaticResource Section.Margin}"
+                Visibility="{Binding Problem, Converter={StaticResource NullToVis}}">
+          <DockPanel>
+            <TextBlock Style="{StaticResource Glyph}" Text="{x:Static m:Glyphs.Warning}" Foreground="{DynamicResource Brush.DiffChangedMark}"
+                       VerticalAlignment="Top" Margin="0,1,8,0" />
+            <TextBlock Text="{Binding Problem}" TextWrapping="Wrap" />
+          </DockPanel>
+        </Border>
+
+        <TextBlock Text="{m:T '미리보기'}" FontWeight="SemiBold" Margin="2,0,0,6" />
+      </StackPanel>
+
+      <Border Grid.Row="1" Background="{DynamicResource Brush.WindowBg}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+              CornerRadius="{StaticResource Radius.Card}" Margin="0,0,0,12" ClipToBounds="True">
+        <ListView Style="{StaticResource ListView.Files}" ItemsSource="{Binding Preview}" BorderThickness="0" Background="Transparent"
+                  VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+          <ListView.View>
+            <GridView>
+              <GridViewColumn Header="{m:T '현재 이름'}" Width="170" DisplayMemberBinding="{Binding OldName}" />
+              <GridViewColumn Header="{m:T '새 이름'}" Width="170" DisplayMemberBinding="{Binding NewName}" />
+            </GridView>
+          </ListView.View>
+        </ListView>
+      </Border>
+    </Grid>
+  </m:ToolPanel>
+</UserControl>

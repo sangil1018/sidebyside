@@ -1,0 +1,113 @@
+<UserControl x:Class="SideBySide.Modules.Resize.ResizeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:m="urn:sidebyside-modules"
+             xmlns:local="clr-namespace:SideBySide.Modules.Resize"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance local:ResizeViewModel}">
+  <m:ToolPanel Glyph="{x:Static m:Glyphs.Resize}" Title="{m:T '이미지 크기 조정'}" Subtitle="{Binding InputSummary}"
+               IsBusy="{Binding IsBusy}" Progress="{Binding Progress}" Status="{Binding Status}">
+    <m:ToolPanel.Footer>
+      <StackPanel Orientation="Horizontal">
+        <Button Style="{StaticResource Button.Standard}" Content="{m:T '취소'}" Margin="0,0,8,0" Command="{Binding CancelRunCommand}"
+                Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+        <Button Style="{StaticResource Button.Primary}" Content="{m:T '크기 조정'}" MinWidth="96" Command="{Binding RunCommand}" />
+      </StackPanel>
+    </m:ToolPanel.Footer>
+
+    <StackPanel>
+      <m:ToolSection Header="{m:T '대상'}">
+        <StackPanel>
+          <ListBox Style="{StaticResource ListBox.Plain}" ItemsSource="{Binding Inputs}" MaxHeight="140" Margin="12,4"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" ToolTip="{Binding}" Style="{StaticResource Text.Secondary}" />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <WrapPanel Margin="10,4,10,6">
+            <Button Style="{StaticResource Button.Ghost}" Command="{Binding UseSelectionCommand}" ToolTip="{m:T '파일 목록에서 지금 선택한 항목으로 바꿉니다.'}">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource Glyph}" Text="{x:Static m:Glyphs.Check}" Margin="{StaticResource Icon.Gap}" />
+                <TextBlock Text="{m:T '선택 항목 사용'}" />
+              </StackPanel>
+            </Button>
+            <Button Style="{StaticResource Button.Ghost}" Command="{Binding AddFilesCommand}">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource Glyph}" Text="{x:Static m:Glyphs.Add}" Margin="{StaticResource Icon.Gap}" />
+                <TextBlock Text="{m:T '파일 추가'}" />
+              </StackPanel>
+            </Button>
+            <Button Style="{StaticResource Button.Ghost}" Command="{Binding AddFolderCommand}">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource Glyph}" Text="{x:Static m:Glyphs.Folder}" Margin="{StaticResource Icon.Gap}" />
+                <TextBlock Text="{m:T '폴더 추가'}" />
+              </StackPanel>
+            </Button>
+            <Button Style="{StaticResource Button.Ghost}" Command="{Binding ClearInputsCommand}">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource Glyph}" Text="{x:Static m:Glyphs.Remove}" Margin="{StaticResource Icon.Gap}" />
+                <TextBlock Text="{m:T '비우기'}" />
+              </StackPanel>
+            </Button>
+          </WrapPanel>
+          <m:ToolRow Label="{m:T '하위 폴더 포함'}" Hint="{m:T '폴더를 넣었을 때 안쪽 폴더의 이미지까지 처리합니다.'}">
+            <CheckBox IsChecked="{Binding IncludeSubfolders}" />
+          </m:ToolRow>
+        </StackPanel>
+      </m:ToolSection>
+
+      <m:ToolSection Header="{m:T '크기'}">
+        <StackPanel>
+          <m:ToolRow Label="{m:T '프리셋'}">
+            <ComboBox Width="190" ItemsSource="{Binding Presets}" SelectedItem="{Binding Preset}" />
+          </m:ToolRow>
+          <m:ToolRow Label="{m:T '비율 (%)'}" Visibility="{Binding IsCustomPercent, Converter={StaticResource BoolToVis}}">
+            <TextBox Width="80" Text="{Binding CustomPercent, UpdateSourceTrigger=PropertyChanged}" />
+          </m:ToolRow>
+          <m:ToolRow Label="{m:T '가로 × 세로 (px)'}" Visibility="{Binding IsCustomBox, Converter={StaticResource BoolToVis}}">
+            <StackPanel Orientation="Horizontal">
+              <TextBox Width="72" Text="{Binding CustomWidth, UpdateSourceTrigger=PropertyChanged}" />
+              <TextBlock Text="×" Margin="6,0" VerticalAlignment="Center" />
+              <TextBox Width="72" Text="{Binding CustomHeight, UpdateSourceTrigger=PropertyChanged}" />
+            </StackPanel>
+          </m:ToolRow>
+          <m:ToolRow Label="{m:T '비율 유지'}" Hint="{m:T '끄면 지정한 크기에 정확히 맞춥니다 (원본 도구와 같은 동작).'}"
+                     Visibility="{Binding IsBox, Converter={StaticResource BoolToVis}}">
+            <CheckBox IsChecked="{Binding KeepAspect}" />
+          </m:ToolRow>
+          <m:ToolRow Label="{m:T '원본보다 크게 만들지 않기'}">
+            <CheckBox IsChecked="{Binding NoUpscale}" />
+          </m:ToolRow>
+          <m:ToolRow Label="{m:T 'JPEG 품질'}">
+            <StackPanel Orientation="Horizontal">
+              <Slider Width="120" Minimum="40" Maximum="100" Value="{Binding JpegQuality}" IsSnapToTickEnabled="True" TickFrequency="1" />
+              <TextBlock Text="{Binding JpegQuality}" Width="28" TextAlignment="Right" VerticalAlignment="Center" />
+            </StackPanel>
+          </m:ToolRow>
+        </StackPanel>
+      </m:ToolSection>
+
+      <m:ToolSection Header="{m:T '저장'}">
+        <StackPanel Margin="12,6">
+          <RadioButton GroupName="ResizeOutput" Content="{m:T '같은 폴더에 접미사를 붙여 저장'}" IsChecked="{Binding IsSuffixOutput}" Margin="0,2" />
+          <RadioButton GroupName="ResizeOutput" Content="{m:T '다른 폴더에 저장 (하위 폴더 구조 유지)'}" IsChecked="{Binding IsFolderOutput}" Margin="0,2" />
+          <RadioButton GroupName="ResizeOutput" Content="{m:T '원본 덮어쓰기'}" IsChecked="{Binding IsOverwriteOutput}" Margin="0,2" />
+          <DockPanel Margin="0,8,0,0" Visibility="{Binding IsFolderOutput, Converter={StaticResource BoolToVis}}">
+            <Button DockPanel.Dock="Right" Style="{StaticResource Button.Standard}" Content="{m:T '찾아보기…'}" Margin="8,0,0,0" Command="{Binding BrowseOutputCommand}" />
+            <TextBox Text="{Binding OutputFolder, UpdateSourceTrigger=PropertyChanged}" />
+          </DockPanel>
+          <DockPanel Margin="0,8,0,0" Visibility="{Binding IsOverwriteOutput, Converter={StaticResource BoolToVisInv}}">
+            <TextBlock Text="{m:T '접미사'}" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBox Text="{Binding Suffix, UpdateSourceTrigger=PropertyChanged}" Width="120" HorizontalAlignment="Left" />
+          </DockPanel>
+          <TextBlock Style="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,8,0,0"
+                     Text="{m:T 'WebP·HEIC처럼 Windows가 저장할 수 없는 형식은 PNG로 저장합니다.'}" />
+        </StackPanel>
+      </m:ToolSection>
+    </StackPanel>
+  </m:ToolPanel>
+</UserControl>
