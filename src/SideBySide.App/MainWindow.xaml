@@ -117,6 +117,8 @@
             <!-- 두 창: 반대쪽 창으로 복사/이동 -->
             <StackPanel Orientation="Horizontal" Visibility="{Binding IsDualPane, Converter={StaticResource BoolToVis}}">
               <Rectangle Width="1" Margin="6,6" Fill="{DynamicResource Brush.Border}" />
+              <!-- 좌우 창의 탭을 통째로 맞바꾼다 (비교 중이면 바꾼 뒤 다시 비교) -->
+              <Button Style="{StaticResource Button.Icon}" Content="&#xE8AB;" Command="{cmd:Command SwapPanes}" ToolTip="{cmd:Tip SwapPanes}" />
               <Button Style="{StaticResource Button.Ghost}" Command="{cmd:Command CopyToRight}" ToolTip="{cmd:Tip CopyToRight}">
                 <StackPanel Orientation="Horizontal">
                   <TextBlock Text="{l:T '복사'}" Margin="0,0,6,0" />

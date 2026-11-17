@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SideBySide.App.Services;
@@ -92,6 +94,38 @@ public sealed partial class PaneViewModel : ObservableObject
         ActiveTab = Tabs[index];
     }
 
+    /// <summary>
+    /// 두 창의 탭을 통째로 맞바꾼다 (탭 목록 + 활성 탭). 창 자체(<see cref="Side"/>)와 뷰는 그대로다.
+    /// </summary>
+    public void SwapTabsWith(PaneViewModel other)
+    {
+        if (ReferenceEquals(this, other)) return;
+
+        var (mine, theirs) = (Tabs.ToList(), other.Tabs.ToList());
+        var (myActive, theirActive) = (ActiveTab, other.ActiveTab);
+
+        foreach (var tab in mine) Detach(tab);
+        foreach (var tab in theirs) other.Detach(tab);
+        Tabs.Clear();
+        other.Tabs.Clear();
+        foreach (var tab in theirs)
+        {
+            Attach(tab);
+            Tabs.Add(tab);
+        }
+
+        foreach (var tab in mine)
+        {
+            other.Attach(tab);
+            other.Tabs.Add(tab);
+        }
+
+        ActiveTab = theirActive;
+        other.ActiveTab = myActive;
+        // 두 번째 대입이 "이전 활성 탭"(= 지금 이 창의 활성 탭)의 표시를 껐으므로 다시 켠다
+        theirActive.IsActive = true;
+    }
+
     public PaneState SaveState() => new()
     {
         Tabs = Tabs.Select(t => t.Path).ToList(),
@@ -118,16 +152,32 @@ public sealed partial class PaneViewModel : ObservableObject
     private TabViewModel CreateTab(string path)
     {
         var tab = new TabViewModel(_ctx, path);
-        tab.PropertyChanged += (_, e) =>
-        {
-            if (ReferenceEquals(tab, ActiveTab) && e.PropertyName is nameof(TabViewModel.Path) or nameof(TabViewModel.HiddenCount) or nameof(TabViewModel.IsSearching))
-                StateChanged?.Invoke(this, EventArgs.Empty);
-        };
-        tab.Items.CollectionChanged += (_, _) =>
-        {
-            if (ReferenceEquals(tab, ActiveTab)) StateChanged?.Invoke(this, EventArgs.Empty);
-        };
+        Attach(tab);
         return tab;
+    }
+
+    // 탭이 다른 창으로 옮겨 갈 수 있으므로(SwapTabsWith) 구독을 걸고 풀 수 있게 이름 있는 처리기로 둔다
+    private void Attach(TabViewModel tab)
+    {
+        tab.PropertyChanged += OnTabPropertyChanged;
+        tab.Items.CollectionChanged += OnTabItemsChanged;
+    }
+
+    private void Detach(TabViewModel tab)
+    {
+        tab.PropertyChanged -= OnTabPropertyChanged;
+        tab.Items.CollectionChanged -= OnTabItemsChanged;
+    }
+
+    private void OnTabPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (ReferenceEquals(sender, ActiveTab) && e.PropertyName is nameof(TabViewModel.Path) or nameof(TabViewModel.HiddenCount) or nameof(TabViewModel.IsSearching))
+            StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnTabItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (ReferenceEquals(sender, ActiveTab.Items)) StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnTabSelectionChanged(object? sender, EventArgs e) => StateChanged?.Invoke(this, EventArgs.Empty);

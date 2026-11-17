@@ -91,6 +91,15 @@
       </StackPanel>
     </DataTemplate>
 
+    <!-- 선택되지 않은 창의 탭·탐색 줄은 흐리게 (파일 목록은 읽기 쉽게 그대로 둔다) -->
+    <Style x:Key="DimWhenInactive" TargetType="FrameworkElement">
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding DataContext.IsActive, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False">
+          <Setter Property="Opacity" Value="0.6" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+
     <!-- 하위 폴더 검색 결과의 "위치" 열 -->
     <DataTemplate x:Key="Cell.Location" DataType="{x:Type vm:FileItemViewModel}">
       <TextBlock Text="{Binding Location}" Foreground="{DynamicResource Brush.TextSecondary}" TextTrimming="CharacterEllipsis"
@@ -106,7 +115,7 @@
     </Grid.RowDefinitions>
 
     <!-- ── 탭 표시줄 ───────────────────────────────────────────── -->
-    <Border Grid.Row="0" Background="{DynamicResource Brush.WindowBg}" Padding="6,0,0,0">
+    <Border Grid.Row="0" Background="{DynamicResource Brush.WindowBg}" Padding="6,0,0,0" Style="{StaticResource DimWhenInactive}">
       <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Focusable="False">
         <StackPanel Orientation="Horizontal">
           <ItemsControl ItemsSource="{Binding Tabs}" Focusable="False">
@@ -135,7 +144,7 @@
                     </ContextMenu>
                   </Border.ContextMenu>
                   <Grid>
-                    <Rectangle x:Name="ActiveLine" Height="2" VerticalAlignment="Top" Margin="-8,0,0,0" RadiusX="1" RadiusY="1"
+                    <Rectangle x:Name="ActiveLine" Height="3" VerticalAlignment="Top" Margin="-8,0,0,0" RadiusX="1" RadiusY="1"
                                Fill="{DynamicResource Brush.Accent}" Visibility="Collapsed" />
                     <DockPanel>
                       <Button DockPanel.Dock="Right" Style="{StaticResource Button.SmallIcon}" Content="&#xE711;" Opacity="0.7"
@@ -159,7 +168,10 @@
                       <Condition Binding="{Binding IsActive}" Value="True" />
                       <Condition Binding="{Binding DataContext.IsActive, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True" />
                     </MultiDataTrigger.Conditions>
+                    <!-- 선택된 창의 활성 탭: 포인트 색 배경 + 굵은 글자 + 위쪽 선 (한 창 모드에서도 같다) -->
                     <Setter TargetName="ActiveLine" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="TabBd" Property="Background" Value="{DynamicResource Brush.AccentSubtle}" />
+                    <Setter TargetName="TabTitle" Property="FontWeight" Value="SemiBold" />
                   </MultiDataTrigger>
                 </DataTemplate.Triggers>
               </DataTemplate>
@@ -170,9 +182,12 @@
         </StackPanel>
       </ScrollViewer>
     </Border>
+    <!-- 선택된 창 표시: 탭 표시줄 아래 포인트 색 선 -->
+    <Rectangle Grid.Row="0" Height="2" VerticalAlignment="Bottom" Fill="{DynamicResource Brush.Accent}" IsHitTestVisible="False"
+               Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}}" />
 
     <!-- ── 탐색 줄 ─────────────────────────────────────────────── -->
-    <Grid Grid.Row="1" Margin="6,6,8,6">
+    <Grid Grid.Row="1" Margin="6,6,8,6" Style="{StaticResource DimWhenInactive}">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="*" />

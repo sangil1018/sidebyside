@@ -198,6 +198,7 @@ public static partial class L
         ["완료"] = "Done",
         ["왼쪽"] = "Left",
         ["왼쪽 / 오른쪽 창 전환"] = "Switch left / right pane",
+        ["좌우 창 바꾸기"] = "Swap left and right panes",
         ["왼쪽 창"] = "the left pane",
         ["왼쪽 창으로 복사"] = "Copy to left pane",
         ["왼쪽 창으로 이동"] = "Move to left pane",

@@ -101,6 +101,10 @@ public static class Glyphs
     public const string Cleaner = "";
     public const string LanShare = "";
     public const string DirectConnect = "";
+    public const string Git = "";
+    public const string Branch = "";
+    public const string Sync = "";
+    public const string Undo = "";
     public const string Shield = "";
     public const string Folder = "";
     public const string OpenFolder = "";

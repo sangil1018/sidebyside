@@ -91,6 +91,7 @@ public static class CommandRegistry
         new(CommandIds.ToggleTheme, L.T("라이트 / 다크 테마"), Key.T, CtrlShift, CommandScope.Global),
         new(CommandIds.OpenSettings, L.T("환경설정"), Key.OemComma, Ctrl, CommandScope.Global),
         new(CommandIds.SwitchPane, L.T("왼쪽 / 오른쪽 창 전환"), Key.Tab, None, CommandScope.FileList),
+        new(CommandIds.SwapPanes, L.T("좌우 창 바꾸기"), Key.U, Ctrl, CommandScope.Global),
         new(CommandIds.ViewDetails, L.T("자세히"), Key.D6, CtrlShift, CommandScope.Global, "Ctrl+Shift+6"),
         new(CommandIds.ViewMediumIcons, L.T("중간 아이콘"), Key.D3, CtrlShift, CommandScope.Global, "Ctrl+Shift+3"),
         new(CommandIds.ViewLargeIcons, L.T("큰 아이콘"), Key.D2, CtrlShift, CommandScope.Global, "Ctrl+Shift+2"),

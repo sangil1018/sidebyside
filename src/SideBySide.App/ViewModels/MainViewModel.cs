@@ -34,6 +34,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly DispatcherTimer _noticeTimer;
     private CancellationTokenSource? _freeSpaceCts;
     private string? _freeSpaceRoot;
+    private bool _swappingPanes;
 
     /// <summary>두 창(분할): 일반 탐색 창 두 개를 나란히. 비교는 <see cref="IsCompareMode"/>로 따로 켠다.</summary>
     [ObservableProperty]
@@ -417,6 +418,7 @@ public sealed partial class MainViewModel : ObservableObject
             ActivePane = OtherPane;
             FocusPaneRequested?.Invoke(this, ActivePane);
         }, () => IsRightPaneVisible);
+        c.Register(CommandIds.SwapPanes, SwapPanes, () => IsRightPaneVisible);
 
         // 탭
         c.Register(CommandIds.NewTab, () => ActivePane.NewTab());
@@ -515,6 +517,29 @@ public sealed partial class MainViewModel : ObservableObject
         IsCompareMode = !IsCompareMode;
     }
 
+    /// <summary>좌우 창의 탭을 통째로 맞바꾼다. 활성 창은 화면 위치 그대로 두고, 비교 중이면 바꾼 뒤 다시 비교한다.</summary>
+    private void SwapPanes()
+    {
+        if (!IsRightPaneVisible || !CloseDiffForModeChange()) return;
+
+        var comparing = IsCompareMode;
+        _swappingPanes = true;
+        try
+        {
+            if (comparing) Compare.Exit();
+            Left.SwapTabsWith(Right);
+        }
+        finally
+        {
+            _swappingPanes = false;
+        }
+
+        if (comparing) Compare.Enter(Left.ActiveTab, Right.ActiveTab);
+        OnPropertyChanged(nameof(ActiveTab));
+        OnPaneStateChanged(ActivePane);
+        FocusPaneRequested?.Invoke(this, ActivePane);
+    }
+
     private bool CloseDiffForModeChange()
     {
         if (ActiveDiff is null) return true;
@@ -538,6 +563,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         Commands.RaiseCanExecuteChanged(); // 반대쪽 창 복사/이동, 차이 이동 등의 사용 가능 여부
         UpdateStatus();
+        SyncGitPanel();
         FocusPaneRequested?.Invoke(this, ActivePane);
     }
 
@@ -968,6 +994,7 @@ public sealed partial class MainViewModel : ObservableObject
     private void OnPanePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(PaneViewModel.ActiveTab) || sender is not PaneViewModel pane) return;
+        if (_swappingPanes) return; // 창 바꾸기 중: 양쪽이 다 바뀐 뒤 SwapPanes가 한 번에 처리한다
         if (IsCompareMode)
         {
             // 비교 중 탭을 바꾸면 새 탭 기준으로 다시 비교
@@ -983,6 +1010,15 @@ public sealed partial class MainViewModel : ObservableObject
         if (!ReferenceEquals(pane, ActivePane)) return;
         UpdateStatus();
         if (ShowPreview) _ = Preview.ShowAsync(ActiveTab.SelectedItem);
+        SyncGitPanel();
+    }
+
+    /// <summary>한 창 모드에서 저장소 폴더에 들어가면 Git 패널을 연다 (같은 폴더·같은 구성이면 모듈 관리자가 무시한다).</summary>
+    private void SyncGitPanel()
+    {
+        var tab = ActiveTab;
+        var folder = tab.IsThisPc || TabViewModel.IsVirtualFolder(tab.Path) ? null : tab.Path;
+        _modules.SyncGitPanel(folder, singlePane: !IsDualPane);
     }
 
     private void UpdateStatus()

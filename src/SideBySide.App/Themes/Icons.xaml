@@ -9,6 +9,7 @@
   <x:Static x:Key="Icon.Cleaner" Member="m:Glyphs.Cleaner" />
   <x:Static x:Key="Icon.LanShare" Member="m:Glyphs.LanShare" />
   <x:Static x:Key="Icon.DirectConnect" Member="m:Glyphs.DirectConnect" />
+  <x:Static x:Key="Icon.Git" Member="m:Glyphs.Git" />
   <x:Static x:Key="Icon.Shield" Member="m:Glyphs.Shield" />
   <x:Static x:Key="Icon.Close" Member="m:Glyphs.Close" />
   <x:Static x:Key="Icon.Window" Member="m:Glyphs.Window" />
