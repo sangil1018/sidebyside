@@ -12,6 +12,7 @@ public static class CommandIds
     public const string ToggleTheme = nameof(ToggleTheme);
     public const string OpenSettings = nameof(OpenSettings);
     public const string SwitchPane = nameof(SwitchPane);
+    public const string SwapPanes = nameof(SwapPanes);
     public const string ViewDetails = nameof(ViewDetails);
     public const string ViewMediumIcons = nameof(ViewMediumIcons);
     public const string ViewLargeIcons = nameof(ViewLargeIcons);

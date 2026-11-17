@@ -13,7 +13,7 @@ SideBySide.App  (WPF, MVVM)        ──▶  SideBySide.Shell (Win32/COM)  ─�
 | `SideBySide.Shell` | `net8.0-windows` | Windows 셸 래퍼만. 앱은 `Abstractions/` 인터페이스로만 사용. P/Invoke 선언은 `Interop/NativeMethods.cs` 한 곳. |
 | `SideBySide.App` | `net8.0-windows` (WPF) | 뷰 + 뷰모델. 코드 비하인드는 순수 UI 동작(포커스, 드래그, 스크롤)만. |
 | `SideBySide.Modules.Abstractions` | `net8.0-windows` (WPF) | 모듈 계약(`IToolModule`, `IModuleHost`), 공통 화면 골격(`ToolPanel`·`ToolSection`·`ToolRow`), 아이콘 표(`Glyphs`). 앱을 참조하지 않는다. |
-| `Modules/SideBySide.Modules.*` | `net8.0-windows` (WPF) | 켜고 끄는 도구 모듈 6개. Abstractions·Core만 참조. 색·스타일을 직접 정의하지 않고 앱 리소스를 쓴다. |
+| `Modules/SideBySide.Modules.*` | `net8.0-windows` (WPF) | 켜고 끄는 도구 모듈 7개. Abstractions·Core만 참조. 색·스타일을 직접 정의하지 않고 앱 리소스를 쓴다. |
 | `tests/SideBySide.Core.Tests` | `net8.0` | Core 단위 테스트 (xUnit). |
 | `tests/SideBySide.Modules.Tests` | `net8.0-windows` | 모듈·승격 헬퍼 테스트, 모든 화면을 실제 리소스로 만들어 보는 UI 스모크 테스트. |
 
@@ -113,6 +113,12 @@ SideBySide.App  (WPF, MVVM)        ──▶  SideBySide.Shell (Win32/COM)  ─�
 2. `ToolModuleBase`를 상속해 `CreateView`·`Open` 구현. 화면은 `m:ToolPanel` 골격 + `m:ToolSection`/`m:ToolRow`, 색은 `DynamicResource` 토큰만
 3. `ModuleCatalog.All`에 디스크립터 + `NoInlining` 팩토리 한 줄
 4. 화면 문자열 영어는 `Core/Localization/L.English.Modules.cs`
+
+### Git 모듈
+- `Modules.Git`: `GitCli`(시스템 `git` 실행 — 터미널 프롬프트·편집기 끔, `GIT_OPTIONAL_LOCKS=0`) → `GitService`(동작) → `GitParsers`(출력 해석, 순수 함수) → `GitViewModel`/`GitView`.
+- GitHub Desktop처럼 스테이지를 드러내지 않는다: 커밋할 때 스테이지를 비우고 체크한 파일만 올려 커밋하고, 변경 취소는 HEAD로 되돌리되 새 파일은 휴지통으로 보낸다.
+- 상태는 `status --porcelain=v2 --branch -z`로 읽고, 저장소 폴더 감시(`FileSystemWatcher`, `.git` 안은 `HEAD`·`index`·`refs`만)와 창 활성화 때 디바운스해 다시 읽는다.
+- 자동 열기: `MainViewModel`이 활성 폴더·창 구성 변경을 `ModuleManager.SyncGitPanel`에 알린다. 한 창 모드에서 저장소(`Core/FileSystem/GitRepository.FindRoot` — git을 실행하지 않는 폴더 검사) 안이면 패널을 `ModuleEntry.Auto`로 열고, 벗어나면 **앱이 연 패널만** 닫는다. 사용자가 닫은 저장소는 벗어날 때까지 다시 열지 않는다. 옵션(`GitSettings.AutoOpen`)은 모듈 데이터에서 어셈블리 로드 없이 읽는다.
 
 ### 관리자 권한 작업 (승격 헬퍼)
 - 일반 권한 앱이 GUID 이름의 파이프(현재 사용자 전용, 인스턴스 1개)를 먼저 만들고 같은 exe를 `--elevated <작업> <파이프> <SHA-256>`로 UAC 실행 (`Modules/Elevation.cs`).

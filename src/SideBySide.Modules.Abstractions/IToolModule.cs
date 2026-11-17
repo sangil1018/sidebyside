@@ -10,6 +10,9 @@ public enum ModuleEntry
 
     /// <summary>도구 모음의 '도구' 메뉴 또는 단축키.</summary>
     Toolbar,
+
+    /// <summary>사용자가 열지 않았는데 앱이 조건에 맞아 스스로 열었다 (예: 저장소 폴더에 들어가면 Git 패널).</summary>
+    Auto,
 }
 
 /// <summary>모듈을 열 때 넘기는 대상. <see cref="Paths"/>는 우클릭한 항목(또는 도구 메뉴를 열 때의 선택), 비어 있을 수 있다.</summary>

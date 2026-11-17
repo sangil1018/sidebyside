@@ -153,38 +153,49 @@ public sealed class ShellIconProvider : IIconProvider, IDisposable
     }
 
     /// <summary>
-    /// 32bpp DIB를 알파 채널을 살려 BitmapSource로 변환
+    /// 비트맵을 알파 채널을 살려 BitmapSource로 변환
     /// (Imaging.CreateBitmapSourceFromHBitmap은 알파를 버려 배경이 검게 나옴).
+    /// 픽셀은 GetDIBits로 "위에서 아래" 32bpp로 받는다: 셸 썸네일은 추출기·크기에 따라 저장 방향이 달라
+    /// DIBSECTION의 높이 부호만 믿고 메모리를 직접 복사하면 위아래가 뒤집힐 수 있다.
     /// </summary>
     private static BitmapSource? FromHBitmap(IntPtr hbitmap)
     {
-        if (GetObject(hbitmap, Marshal.SizeOf<DIBSECTION>(), out var dib) == 0 || dib.dsBm.bmBits == IntPtr.Zero) return null;
+        if (GetObject(hbitmap, Marshal.SizeOf<DIBSECTION>(), out var dib) == 0) return null;
 
-        var bm = dib.dsBm;
-        var height = Math.Abs(bm.bmHeight);
-        var stride = bm.bmWidthBytes;
+        var width = dib.dsBm.bmWidth;
+        var height = Math.Abs(dib.dsBm.bmHeight);
+        if (width <= 0 || height <= 0) return null;
+
+        var stride = width * 4;
         var pixels = new byte[stride * height];
-        Marshal.Copy(bm.bmBits, pixels, 0, pixels.Length);
-
-        if (dib.dsBmih.biHeight > 0)
+        var header = new BITMAPINFOHEADER
         {
-            // 아래에서 위로 저장된 DIB → 뒤집기
-            var row = new byte[stride];
-            for (int top = 0, bottom = height - 1; top < bottom; top++, bottom--)
-            {
-                Buffer.BlockCopy(pixels, top * stride, row, 0, stride);
-                Buffer.BlockCopy(pixels, bottom * stride, pixels, top * stride, stride);
-                Buffer.BlockCopy(row, 0, pixels, bottom * stride, stride);
-            }
+            biSize = (uint)Marshal.SizeOf<BITMAPINFOHEADER>(),
+            biWidth = width,
+            biHeight = -height, // 음수 = 위에서 아래 (GDI가 원본 방향에 맞춰 변환)
+            biPlanes = 1,
+            biBitCount = 32,
+            biCompression = 0, // BI_RGB
+        };
+
+        var hdc = CreateCompatibleDC(IntPtr.Zero);
+        if (hdc == IntPtr.Zero) return null;
+        try
+        {
+            if (GetDIBits(hdc, hbitmap, 0, (uint)height, pixels, ref header, 0) == 0) return null;
+        }
+        finally
+        {
+            DeleteDC(hdc);
         }
 
         // 내용이 전부 0인 비트맵(빈 썸네일)은 버리고 대체 아이콘을 쓰게 한다
         if (Array.TrueForAll(pixels, b => b == 0)) return null;
 
-        PixelFormat format;
-        if (bm.bmBitsPixel == 32)
+        // 알파가 전혀 없으면(24bpp 원본 등) 불투명으로 다룬다
+        var hasAlpha = false;
+        if (dib.dsBm.bmBitsPixel == 32)
         {
-            var hasAlpha = false;
             for (int i = 3; i < pixels.Length; i += 4)
             {
                 if (pixels[i] != 0)
@@ -193,19 +204,10 @@ public sealed class ShellIconProvider : IIconProvider, IDisposable
                     break;
                 }
             }
-
-            format = hasAlpha ? PixelFormats.Pbgra32 : PixelFormats.Bgr32;
-        }
-        else if (bm.bmBitsPixel == 24)
-        {
-            format = PixelFormats.Bgr24;
-        }
-        else
-        {
-            return null;
         }
 
-        var source = BitmapSource.Create(bm.bmWidth, height, 96, 96, format, null, pixels, stride);
+        var format = hasAlpha ? PixelFormats.Pbgra32 : PixelFormats.Bgr32;
+        var source = BitmapSource.Create(width, height, 96, 96, format, null, pixels, stride);
         source.Freeze();
         return source;
     }

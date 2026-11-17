@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using SideBySide.Core.FileSystem;
 using SideBySide.Core.Localization;
 using SideBySide.Core.Sequences;
 using SideBySide.Core.Settings;
@@ -85,7 +86,20 @@ public static class ModuleCatalog
             AppliesTo = c => !c.OnBackground && c.Paths.Count > 0 && c.Paths.All(File.Exists),
             Create = CreateDirectConnect,
         },
+        new()
+        {
+            Id = GitId,
+            Title = L.T("Git"),
+            Description = L.T("저장소의 변경을 보고 커밋·브랜치 전환·Pull/Push를 합니다. 한 창 모드에서 저장소 폴더에 들어가면 자동으로 열립니다."),
+            Glyph = Glyphs.Git,
+            MenuText = L.T("Git 패널 열기"),
+            AppliesTo = IsGitTarget,
+            Create = CreateGit,
+        },
     ];
+
+    /// <summary>Git 모듈 ID (자동 열기는 <see cref="ModuleManager"/>가 이 ID로 처리한다).</summary>
+    public const string GitId = "git";
 
     public static ModuleDescriptor? Find(string id) => All.FirstOrDefault(m => m.Id == id);
 
@@ -117,6 +131,15 @@ public static class ModuleCatalog
 
     private static bool HasSequence(string folder, IReadOnlySet<string>? extensions)
         => IsNetworkPath(folder) || SequenceDetector.FolderHasSequence(folder, extensions);
+
+    /// <summary>폴더 하나(또는 빈 공간 = 현재 폴더)가 git 저장소 안일 때. 네트워크 위치는 검사 없이 보인다.</summary>
+    private static bool IsGitTarget(MenuContext c)
+    {
+        var folder = c.OnBackground ? c.Folder
+            : c.Paths.Count == 1 && Directory.Exists(c.Paths[0]) ? c.Paths[0]
+            : null;
+        return folder is not null && (IsNetworkPath(folder) || GitRepository.FindRoot(folder) is not null);
+    }
 
     private static bool IsNetworkPath(string path)
     {
@@ -156,6 +179,9 @@ public static class ModuleCatalog
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static string LanShareResetElevated(string payload) => SideBySide.Modules.LanShare.LanShareElevated.Reset(payload);
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static IToolModule CreateGit(IModuleHost host) => new SideBySide.Modules.Git.GitModule(host);
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static IToolModule CreateDirectConnect(IModuleHost host) => new SideBySide.Modules.DirectConnect.DirectConnectModule(host);

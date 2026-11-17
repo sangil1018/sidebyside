@@ -314,6 +314,17 @@ internal static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool DeleteObject(IntPtr hObject);
 
+    [DllImport("gdi32.dll")]
+    public static extern IntPtr CreateCompatibleDC(IntPtr hdc);
+
+    [DllImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool DeleteDC(IntPtr hdc);
+
+    /// <summary>비트맵 픽셀을 요청한 형식(방향 포함)으로 복사한다. 32bpp BI_RGB는 색상표가 없어 헤더만 넘기면 된다.</summary>
+    [DllImport("gdi32.dll")]
+    public static extern int GetDIBits(IntPtr hdc, IntPtr hbm, uint start, uint lines, [Out] byte[] bits, ref BITMAPINFOHEADER bmi, uint usage);
+
     // ── DWM ──────────────────────────────────────────────────────────
     public const int DWMWA_USE_IMMERSIVE_DARK_MODE_OLD = 19;
     public const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;

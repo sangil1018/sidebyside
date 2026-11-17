@@ -59,6 +59,8 @@
   <!-- 반대쪽에만 있는 행의 빈 자리 -->
   <SolidColorBrush x:Key="Brush.DiffPlaceholder" Color="#F6F6F6" />
   <SolidColorBrush x:Key="Brush.DiffError" Color="#C42B1C" />
+  <!-- Git 패널 diff: 지워진 줄 배경 (추가된 줄은 Brush.DiffRight) -->
+  <SolidColorBrush x:Key="Brush.DiffRemoved" Color="#FBE7E9" />
   <!-- 더 최신 파일 표시 점 -->
   <SolidColorBrush x:Key="Brush.Newer" Color="#2F6DB5" />
 
