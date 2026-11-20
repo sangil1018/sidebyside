@@ -102,6 +102,7 @@ public static class Glyphs
     public const string LanShare = "";
     public const string DirectConnect = "";
     public const string Git = "";
+    public const string Svn = "";
     public const string Branch = "";
     public const string Sync = "";
     public const string Undo = "";

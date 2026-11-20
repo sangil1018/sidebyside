@@ -29,6 +29,7 @@
     <ProjectReference Include="..\Modules\SideBySide.Modules.LanShare\SideBySide.Modules.LanShare.csproj" />
     <ProjectReference Include="..\Modules\SideBySide.Modules.DirectConnect\SideBySide.Modules.DirectConnect.csproj" />
     <ProjectReference Include="..\Modules\SideBySide.Modules.Git\SideBySide.Modules.Git.csproj" />
+    <ProjectReference Include="..\Modules\SideBySide.Modules.Svn\SideBySide.Modules.Svn.csproj" />
   </ItemGroup>
 
   <ItemGroup>
