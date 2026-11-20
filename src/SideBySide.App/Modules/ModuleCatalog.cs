@@ -96,10 +96,23 @@ public static class ModuleCatalog
             AppliesTo = IsGitTarget,
             Create = CreateGit,
         },
+        new()
+        {
+            Id = SvnId,
+            Title = L.T("SVN"),
+            Description = L.T("SVN 작업 사본의 변경을 보고 커밋·업데이트·브랜치 전환을 합니다. 한 창 모드에서 작업 사본 폴더에 들어가면 자동으로 열립니다."),
+            Glyph = Glyphs.Svn,
+            MenuText = L.T("SVN 패널 열기"),
+            AppliesTo = IsSvnTarget,
+            Create = CreateSvn,
+        },
     ];
 
     /// <summary>Git 모듈 ID (자동 열기는 <see cref="ModuleManager"/>가 이 ID로 처리한다).</summary>
     public const string GitId = "git";
+
+    /// <summary>SVN 모듈 ID (자동 열기는 Git과 같은 방식).</summary>
+    public const string SvnId = "svn";
 
     public static ModuleDescriptor? Find(string id) => All.FirstOrDefault(m => m.Id == id);
 
@@ -139,6 +152,15 @@ public static class ModuleCatalog
             : c.Paths.Count == 1 && Directory.Exists(c.Paths[0]) ? c.Paths[0]
             : null;
         return folder is not null && (IsNetworkPath(folder) || GitRepository.FindRoot(folder) is not null);
+    }
+
+    /// <summary>폴더 하나(또는 빈 공간 = 현재 폴더)가 SVN 작업 사본 안일 때. 네트워크 위치는 검사 없이 보인다.</summary>
+    private static bool IsSvnTarget(MenuContext c)
+    {
+        var folder = c.OnBackground ? c.Folder
+            : c.Paths.Count == 1 && Directory.Exists(c.Paths[0]) ? c.Paths[0]
+            : null;
+        return folder is not null && (IsNetworkPath(folder) || SvnWorkingCopy.FindRoot(folder) is not null);
     }
 
     private static bool IsNetworkPath(string path)
@@ -182,6 +204,9 @@ public static class ModuleCatalog
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static IToolModule CreateGit(IModuleHost host) => new SideBySide.Modules.Git.GitModule(host);
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static IToolModule CreateSvn(IModuleHost host) => new SideBySide.Modules.Svn.SvnModule(host);
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static IToolModule CreateDirectConnect(IModuleHost host) => new SideBySide.Modules.DirectConnect.DirectConnectModule(host);

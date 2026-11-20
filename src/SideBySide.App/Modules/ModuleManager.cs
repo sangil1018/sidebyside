@@ -31,6 +31,26 @@ public sealed class PanelTool(string id, string title, string glyph, FrameworkEl
 /// </summary>
 public sealed partial class ModuleManager(AppSettings settings, ThemeManager theme) : ObservableObject, IDisposable
 {
+    /// <summary>저장소 폴더에 들어가면 자동으로 여는 패널 하나(Git, SVN)의 상태.</summary>
+    private sealed class AutoPanel(string id, Func<string, string?> findRoot)
+    {
+        public string Id { get; } = id;
+
+        /// <summary>폴더가 속한 저장소 최상위 (프로세스 없이 폴더 구조만 본다).</summary>
+        public Func<string, string?> FindRoot { get; } = findRoot;
+
+        /// <summary>마지막으로 본 폴더가 속한 저장소 (없으면 null).</summary>
+        public string? Root { get; set; }
+
+        /// <summary>사용자가 패널을 닫은 저장소: 이 저장소를 벗어날 때까지 다시 열지 않는다.</summary>
+        public string? DismissedRoot { get; set; }
+
+        /// <summary>지금 떠 있는 패널을 앱이 스스로 열었는지 (그럴 때만 스스로 닫는다).</summary>
+        public bool AutoOpened { get; set; }
+
+        public int Version { get; set; }
+    }
+
     private sealed class Running(ModuleDescriptor descriptor, IToolModule module)
     {
         public ModuleDescriptor Descriptor { get; } = descriptor;
@@ -47,14 +67,16 @@ public sealed partial class ModuleManager(AppSettings settings, ThemeManager the
     private readonly Dictionary<string, Running> _running = [];
     private MainViewModel? _main;
 
-    // ── Git 패널 자동 열기 상태 (SyncGitPanel) ──
-    private string? _gitFolder;        // 마지막으로 본 활성 폴더
-    private bool _gitSinglePane;       // 그때 한 창 모드였는지
-    private string? _gitRoot;          // 그 폴더가 속한 저장소 (없으면 null)
-    private string? _gitDismissedRoot; // 사용자가 패널을 닫은 저장소: 이 저장소를 벗어날 때까지 다시 열지 않는다
-    private bool _gitAutoOpened;       // 지금 떠 있는 Git 패널을 앱이 스스로 열었는지 (그럴 때만 스스로 닫는다)
-    private bool _gitSynced;           // SyncGitPanel이 한 번이라도 불렸는지
-    private int _gitSyncVersion;
+    // ── 저장소 패널 자동 열기 상태 (SyncRepositoryPanels) ──
+    private readonly AutoPanel[] _autoPanels =
+    [
+        new(ModuleCatalog.GitId, GitRepository.FindRoot),
+        new(ModuleCatalog.SvnId, SvnWorkingCopy.FindRoot),
+    ];
+
+    private string? _syncFolder;  // 마지막으로 본 활성 폴더
+    private bool _syncSinglePane; // 그때 한 창 모드였는지
+    private bool _synced;         // SyncRepositoryPanels가 한 번이라도 불렸는지
 
     /// <summary>오른쪽 패널에 열린 도구들.</summary>
     public ObservableCollection<PanelTool> PanelTools { get; } = [];
@@ -86,12 +108,12 @@ public sealed partial class ModuleManager(AppSettings settings, ThemeManager the
     {
         if (ModuleCatalog.Find(id) is not { } descriptor || !IsEnabled(descriptor) || _main is null) return;
 
-        if (id == ModuleCatalog.GitId)
+        if (AutoPanelOf(id) is { } auto)
         {
             // 사용자가 직접 열면 그때부터는 사용자 것: 자동으로 닫지 않고, 닫았던 기억도 지운다
             var shown = _running.TryGetValue(id, out var existing) && existing.IsShown;
-            _gitAutoOpened = invocation.Entry == ModuleEntry.Auto && (!shown || _gitAutoOpened);
-            if (invocation.Entry != ModuleEntry.Auto) _gitDismissedRoot = null;
+            auto.AutoOpened = invocation.Entry == ModuleEntry.Auto && (!shown || auto.AutoOpened);
+            if (invocation.Entry != ModuleEntry.Auto) auto.DismissedRoot = null;
         }
 
         Running running;
@@ -151,11 +173,11 @@ public sealed partial class ModuleManager(AppSettings settings, ThemeManager the
     public void ClosePanelTool(PanelTool tool)
     {
         if (!_running.TryGetValue(tool.Id, out var running) || !running.Module.CanClose()) return;
-        if (tool.Id == ModuleCatalog.GitId)
+        if (AutoPanelOf(tool.Id) is { } auto)
         {
             // 닫은 저장소 안을 돌아다니는 동안에는 다시 자동으로 열지 않는다
-            _gitDismissedRoot = _gitRoot;
-            _gitAutoOpened = false;
+            auto.DismissedRoot = auto.Root;
+            auto.AutoOpened = false;
         }
 
         RemoveFromPanel(running);
@@ -163,31 +185,33 @@ public sealed partial class ModuleManager(AppSettings settings, ThemeManager the
     }
 
     /// <summary>
-    /// 활성 폴더나 창 구성이 바뀌었다: 한 창 모드에서 git 저장소 폴더에 들어가면 Git 패널을 열고, 벗어나면 (앱이 연 경우에만) 닫는다.
-    /// Git 모듈이 켜져 있고 모듈의 '자동으로 열기'가 켜져 있으며 열기 방식이 패널일 때만 동작한다.
+    /// 활성 폴더나 창 구성이 바뀌었다: 한 창 모드에서 git 저장소·SVN 작업 사본 폴더에 들어가면 해당 패널을 열고,
+    /// 벗어나면 (앱이 연 경우에만) 닫는다. 모듈이 켜져 있고 모듈의 '자동으로 열기'가 켜져 있으며 열기 방식이 패널일 때만 동작한다.
     /// </summary>
-    public void SyncGitPanel(string? folder, bool singlePane)
+    public void SyncRepositoryPanels(string? folder, bool singlePane)
     {
-        if (_gitSynced && string.Equals(folder, _gitFolder, StringComparison.OrdinalIgnoreCase) && singlePane == _gitSinglePane) return;
-        _gitSynced = true;
-        _gitFolder = folder;
-        _gitSinglePane = singlePane;
-        _ = SyncGitPanelAsync(folder, singlePane);
+        if (_synced && string.Equals(folder, _syncFolder, StringComparison.OrdinalIgnoreCase) && singlePane == _syncSinglePane) return;
+        _synced = true;
+        _syncFolder = folder;
+        _syncSinglePane = singlePane;
+        foreach (var auto in _autoPanels) _ = SyncAutoPanelAsync(auto, folder, singlePane);
     }
 
-    private async Task SyncGitPanelAsync(string? folder, bool singlePane)
+    private AutoPanel? AutoPanelOf(string id) => _autoPanels.FirstOrDefault(a => a.Id == id);
+
+    private async Task SyncAutoPanelAsync(AutoPanel auto, string? folder, bool singlePane)
     {
-        var version = ++_gitSyncVersion;
-        if (ModuleCatalog.Find(ModuleCatalog.GitId) is not { } descriptor || !IsEnabled(descriptor) || _main is null) return;
+        var version = ++auto.Version;
+        if (ModuleCatalog.Find(auto.Id) is not { } descriptor || !IsEnabled(descriptor) || _main is null) return;
 
         // 저장소 찾기는 상위 폴더를 훑으므로 (느린 드라이브 대비) UI 스레드 밖에서
-        var root = folder is null ? null : await Task.Run(() => GitRepository.FindRoot(folder));
-        if (version != _gitSyncVersion) return;
-        _gitRoot = root;
-        if (root is null || !GitRepository.SameRoot(root, _gitDismissedRoot)) _gitDismissedRoot = null;
+        var root = folder is null ? null : await Task.Run(() => auto.FindRoot(folder));
+        if (version != auto.Version) return;
+        auto.Root = root;
+        if (root is null || !GitRepository.SameRoot(root, auto.DismissedRoot)) auto.DismissedRoot = null;
 
         var shown = _running.TryGetValue(descriptor.Id, out var running) && running.IsShown;
-        if (shown && root is not null && (singlePane || !_gitAutoOpened))
+        if (shown && root is not null && (singlePane || !auto.AutoOpened))
         {
             // 이미 열려 있으면(직접 열었든 자동이든) 보고 있는 저장소만 따라간다. 패널의 활성 탭은 건드리지 않는다.
             running!.Module.Open(new ModuleInvocation([], root, ModuleEntry.Auto));
@@ -197,9 +221,9 @@ public sealed partial class ModuleManager(AppSettings settings, ThemeManager the
         if (shown)
         {
             // 저장소를 벗어났거나 두 창으로 바뀌었다: 앱이 연 패널만 닫는다
-            if (_gitAutoOpened && running!.Panel is not null && running.Module.CanClose())
+            if (auto.AutoOpened && running!.Panel is not null && running.Module.CanClose())
             {
-                _gitAutoOpened = false;
+                auto.AutoOpened = false;
                 RemoveFromPanel(running);
                 OnUiClosed(running);
             }
@@ -207,15 +231,15 @@ public sealed partial class ModuleManager(AppSettings settings, ThemeManager the
             return;
         }
 
-        var wanted = singlePane && root is not null && _gitDismissedRoot is null
-                     && GitAutoOpenEnabled() && OpenModeOf(descriptor) == ModuleOpenMode.Panel;
+        var wanted = singlePane && root is not null && auto.DismissedRoot is null
+                     && AutoOpenEnabled(auto.Id) && OpenModeOf(descriptor) == ModuleOpenMode.Panel;
         if (wanted) Open(descriptor.Id, new ModuleInvocation([], root, ModuleEntry.Auto));
     }
 
-    /// <summary>Git 모듈의 '저장소 폴더에서 자동으로 열기' (모듈 데이터에 저장, 없으면 켜짐). 모듈 어셈블리를 불러오지 않고 읽는다.</summary>
-    private bool GitAutoOpenEnabled()
+    /// <summary>모듈의 '…폴더에서 자동으로 열기' (모듈 데이터의 AutoOpen, 없으면 켜짐). 모듈 어셈블리를 불러오지 않고 읽는다.</summary>
+    private bool AutoOpenEnabled(string id)
     {
-        if (!settings.Modules.TryGetValue(ModuleCatalog.GitId, out var s) || s.Data is null) return true;
+        if (!settings.Modules.TryGetValue(id, out var s) || s.Data is null) return true;
         foreach (var (name, value) in s.Data)
         {
             if (!name.Equals("AutoOpen", StringComparison.OrdinalIgnoreCase) || value is null) continue;
@@ -266,8 +290,12 @@ public sealed partial class ModuleManager(AppSettings settings, ThemeManager the
         OnPropertyChanged(nameof(HasEnabledModules));
         OnPropertyChanged(nameof(EnabledModules));
 
-        // Git 모듈을 방금 켰거나 열기 방식을 바꿨으면 지금 폴더 기준으로 다시 판단한다
-        if (_gitSynced && changes.ContainsKey(ModuleCatalog.GitId)) _ = SyncGitPanelAsync(_gitFolder, _gitSinglePane);
+        // 저장소 패널 모듈을 방금 켰거나 열기 방식을 바꿨으면 지금 폴더 기준으로 다시 판단한다
+        if (!_synced) return;
+        foreach (var auto in _autoPanels)
+        {
+            if (changes.ContainsKey(auto.Id)) _ = SyncAutoPanelAsync(auto, _syncFolder, _syncSinglePane);
+        }
     }
 
     /// <summary>우클릭 메뉴 맨 위에 넣을 모듈 항목. 켜진 모듈 중 대상에 맞는 것만.</summary>

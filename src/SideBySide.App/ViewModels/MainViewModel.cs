@@ -563,7 +563,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         Commands.RaiseCanExecuteChanged(); // 반대쪽 창 복사/이동, 차이 이동 등의 사용 가능 여부
         UpdateStatus();
-        SyncGitPanel();
+        SyncRepositoryPanels();
         FocusPaneRequested?.Invoke(this, ActivePane);
     }
 
@@ -1010,15 +1010,15 @@ public sealed partial class MainViewModel : ObservableObject
         if (!ReferenceEquals(pane, ActivePane)) return;
         UpdateStatus();
         if (ShowPreview) _ = Preview.ShowAsync(ActiveTab.SelectedItem);
-        SyncGitPanel();
+        SyncRepositoryPanels();
     }
 
-    /// <summary>한 창 모드에서 저장소 폴더에 들어가면 Git 패널을 연다 (같은 폴더·같은 구성이면 모듈 관리자가 무시한다).</summary>
-    private void SyncGitPanel()
+    /// <summary>한 창 모드에서 git 저장소·SVN 작업 사본 폴더에 들어가면 해당 패널을 연다 (같은 폴더·같은 구성이면 모듈 관리자가 무시한다).</summary>
+    private void SyncRepositoryPanels()
     {
         var tab = ActiveTab;
         var folder = tab.IsThisPc || TabViewModel.IsVirtualFolder(tab.Path) ? null : tab.Path;
-        _modules.SyncGitPanel(folder, singlePane: !IsDualPane);
+        _modules.SyncRepositoryPanels(folder, singlePane: !IsDualPane);
     }
 
     private void UpdateStatus()

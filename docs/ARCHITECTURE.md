@@ -13,7 +13,7 @@ SideBySide.App  (WPF, MVVM)        ──▶  SideBySide.Shell (Win32/COM)  ─�
 | `SideBySide.Shell` | `net8.0-windows` | Windows 셸 래퍼만. 앱은 `Abstractions/` 인터페이스로만 사용. P/Invoke 선언은 `Interop/NativeMethods.cs` 한 곳. |
 | `SideBySide.App` | `net8.0-windows` (WPF) | 뷰 + 뷰모델. 코드 비하인드는 순수 UI 동작(포커스, 드래그, 스크롤)만. |
 | `SideBySide.Modules.Abstractions` | `net8.0-windows` (WPF) | 모듈 계약(`IToolModule`, `IModuleHost`), 공통 화면 골격(`ToolPanel`·`ToolSection`·`ToolRow`), 아이콘 표(`Glyphs`). 앱을 참조하지 않는다. |
-| `Modules/SideBySide.Modules.*` | `net8.0-windows` (WPF) | 켜고 끄는 도구 모듈 7개. Abstractions·Core만 참조. 색·스타일을 직접 정의하지 않고 앱 리소스를 쓴다. |
+| `Modules/SideBySide.Modules.*` | `net8.0-windows` (WPF) | 켜고 끄는 도구 모듈 8개. Abstractions·Core만 참조. 색·스타일을 직접 정의하지 않고 앱 리소스를 쓴다. |
 | `tests/SideBySide.Core.Tests` | `net8.0` | Core 단위 테스트 (xUnit). |
 | `tests/SideBySide.Modules.Tests` | `net8.0-windows` | 모듈·승격 헬퍼 테스트, 모든 화면을 실제 리소스로 만들어 보는 UI 스모크 테스트. |
 
@@ -118,7 +118,14 @@ SideBySide.App  (WPF, MVVM)        ──▶  SideBySide.Shell (Win32/COM)  ─�
 - `Modules.Git`: `GitCli`(시스템 `git` 실행 — 터미널 프롬프트·편집기 끔, `GIT_OPTIONAL_LOCKS=0`) → `GitService`(동작) → `GitParsers`(출력 해석, 순수 함수) → `GitViewModel`/`GitView`.
 - GitHub Desktop처럼 스테이지를 드러내지 않는다: 커밋할 때 스테이지를 비우고 체크한 파일만 올려 커밋하고, 변경 취소는 HEAD로 되돌리되 새 파일은 휴지통으로 보낸다.
 - 상태는 `status --porcelain=v2 --branch -z`로 읽고, 저장소 폴더 감시(`FileSystemWatcher`, `.git` 안은 `HEAD`·`index`·`refs`만)와 창 활성화 때 디바운스해 다시 읽는다.
-- 자동 열기: `MainViewModel`이 활성 폴더·창 구성 변경을 `ModuleManager.SyncGitPanel`에 알린다. 한 창 모드에서 저장소(`Core/FileSystem/GitRepository.FindRoot` — git을 실행하지 않는 폴더 검사) 안이면 패널을 `ModuleEntry.Auto`로 열고, 벗어나면 **앱이 연 패널만** 닫는다. 사용자가 닫은 저장소는 벗어날 때까지 다시 열지 않는다. 옵션(`GitSettings.AutoOpen`)은 모듈 데이터에서 어셈블리 로드 없이 읽는다.
+- 자동 열기: `MainViewModel`이 활성 폴더·창 구성 변경을 `ModuleManager.SyncRepositoryPanels`에 알린다 (Git·SVN 패널이 같은 규칙을 따른다). 한 창 모드에서 저장소(`Core/FileSystem/GitRepository.FindRoot` — git을 실행하지 않는 폴더 검사) 안이면 패널을 `ModuleEntry.Auto`로 열고, 벗어나면 **앱이 연 패널만** 닫는다. 사용자가 닫은 저장소는 벗어날 때까지 다시 열지 않는다. 옵션(`GitSettings.AutoOpen`)은 모듈 데이터에서 어셈블리 로드 없이 읽는다.
+
+### SVN 모듈
+- `Modules.Svn`: `SvnCli`(시스템 `svn` 실행 — 항상 `--non-interactive`, PATH에 없으면 TortoiseSVN·SlikSVN·VisualSVN 기본 위치에서 찾음, 오류 출력은 ANSI 코드 페이지로 읽음) → `SvnService`(동작) → `SvnParsers`(`--xml` 출력·unified diff 해석, 순수 함수) → `SvnViewModel`/`SvnView`.
+- Git 패널과 같은 흐름: add/delete를 드러내지 않고, 커밋할 때 체크한 새 파일은 `svn add`, 디스크에서 없어진 파일은 `svn delete` 뒤 `--targets` 파일로 함께 커밋한다. 변경 취소는 `svn revert`, 새 파일·추가 예약 파일은 휴지통으로 보낸다.
+- 자동 새로 고침은 로컬 상태만 읽는다(`status --xml`, `info --xml`). 서버 확인(`status -u`)은 새로 고침 단추를 누를 때만 해서 Update 단추에 받을 변경 수를 보인다. `.svn` 안의 변경은 감시하지 않는다(상태 조회만으로도 바뀌어 새로 고침이 끝없이 돌 수 있음).
+- 브랜치는 저장소 경로에서 trunk / branches/x / tags/x 위치를 찾아(`SvnParsers.ParseLayout`) `svn switch`로 바꾼다. 새 브랜치는 지금 브랜치를 `branches/이름`으로 서버 복사한 뒤 전환한다. 표준 배치가 아니면 전환 기능을 숨긴다.
+- 작업 사본 판별은 `Core/FileSystem/SvnWorkingCopy.FindRoot`(svn을 실행하지 않고 상위 폴더의 `.svn`을 찾음, SVN 1.7 이상).
 
 ### 관리자 권한 작업 (승격 헬퍼)
 - 일반 권한 앱이 GUID 이름의 파이프(현재 사용자 전용, 인스턴스 1개)를 먼저 만들고 같은 exe를 `--elevated <작업> <파이프> <SHA-256>`로 UAC 실행 (`Modules/Elevation.cs`).
