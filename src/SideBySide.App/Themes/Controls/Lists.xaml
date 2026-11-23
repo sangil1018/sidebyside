@@ -170,6 +170,32 @@
     </Setter>
   </Style>
 
+  <!--
+    도구 패널 안의 긴 목록 (변경 파일·기록·diff 줄): 스스로 스크롤하고 화면에 보이는 줄만 만든다.
+    ListBox.Plain은 바깥 ScrollViewer에 들어가는 짧은 목록용이라 스크롤·가상화가 없다 (항목 수만큼 화면 요소를 만든다).
+  -->
+  <Style x:Key="ListBox.Scroll" TargetType="ListBox" BasedOn="{StaticResource ListBox.Plain}">
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+    <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+    <Setter Property="ScrollViewer.PanningMode" Value="VerticalFirst" />
+    <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
+    <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
+    <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListBox">
+          <ScrollViewer Focusable="False" Padding="{TemplateBinding Padding}"
+                        HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
+                        VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}"
+                        CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}">
+            <ItemsPresenter />
+          </ScrollViewer>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <!-- ── 파일 비교 줄 ─────────────────────────────────────────────── -->
 
   <Style x:Key="ListBoxItem.DiffLine" TargetType="ListBoxItem">

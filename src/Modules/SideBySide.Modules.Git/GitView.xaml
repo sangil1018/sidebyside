@@ -41,7 +41,7 @@
       </DataTemplate.Triggers>
     </DataTemplate>
 
-    <Style x:Key="DiffList" TargetType="ListBox" BasedOn="{StaticResource ListBox.Plain}">
+    <Style x:Key="DiffList" TargetType="ListBox" BasedOn="{StaticResource ListBox.Scroll}">
       <Setter Property="ItemContainerStyle" Value="{StaticResource ListBoxItem.DiffLine}" />
       <Setter Property="ItemTemplate" Value="{StaticResource DiffLineTemplate}" />
       <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
@@ -222,7 +222,7 @@
 
           <Border Grid.Row="1" Style="{StaticResource Card}">
             <Grid>
-              <ListBox Style="{StaticResource ListBox.Plain}" ItemsSource="{Binding Changes}" SelectedItem="{Binding SelectedChange}"
+              <ListBox Style="{StaticResource ListBox.Scroll}" ItemsSource="{Binding Changes}" SelectedItem="{Binding SelectedChange}"
                        ScrollViewer.VerticalScrollBarVisibility="Auto" Margin="2">
                 <ListBox.ItemTemplate>
                   <DataTemplate DataType="{x:Type local:ChangeItem}">
@@ -294,7 +294,7 @@
                       Margin="0,2,0,4" Command="{Binding LoadMoreCommand}"
                       Visibility="{Binding CanLoadMore, Converter={StaticResource BoolToVis}}" />
               <Grid>
-                <ListBox Style="{StaticResource ListBox.Plain}" ItemsSource="{Binding History}" SelectedItem="{Binding SelectedCommit}"
+                <ListBox Style="{StaticResource ListBox.Scroll}" ItemsSource="{Binding History}" SelectedItem="{Binding SelectedCommit}"
                          ScrollViewer.VerticalScrollBarVisibility="Auto" VirtualizingPanel.IsVirtualizing="True" Margin="2">
                   <ListBox.ItemTemplate>
                     <DataTemplate DataType="{x:Type local:CommitItem}">
@@ -322,7 +322,7 @@
           <!-- 고른 커밋의 변경 파일 + diff -->
           <DockPanel Grid.Row="2">
           <Border DockPanel.Dock="Top" Style="{StaticResource Card}" MaxHeight="120" Margin="0,0,0,8">
-            <ListBox Style="{StaticResource ListBox.Plain}" ItemsSource="{Binding CommitFiles}" SelectedItem="{Binding SelectedCommitFile}"
+            <ListBox Style="{StaticResource ListBox.Scroll}" ItemsSource="{Binding CommitFiles}" SelectedItem="{Binding SelectedCommitFile}"
                      ScrollViewer.VerticalScrollBarVisibility="Auto" Margin="2">
               <ListBox.ItemTemplate>
                 <DataTemplate DataType="{x:Type local:ChangeItem}">

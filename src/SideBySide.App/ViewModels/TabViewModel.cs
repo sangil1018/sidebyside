@@ -155,6 +155,12 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
 
     public bool IsCompareView => NavigationInterceptor is not null;
 
+    /// <summary>
+    /// 반대쪽 창의 선택을 따라 이 창의 선택을 바꾸는 중 (<see cref="RequestSelectIndices"/>로 온 요청을 화면이 적용하는 동안).
+    /// 이때 생기는 선택 변경은 반대쪽으로 다시 보내지 않는다 — 두 창이 서로의 선택을 끝없이 주고받지 않게.
+    /// </summary>
+    public bool IsApplyingSyncedSelection { get; set; }
+
     public event EventHandler? SelectionChanged;
 
     public event EventHandler<SelectRequest>? SelectRequested;
