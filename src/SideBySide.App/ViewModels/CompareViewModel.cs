@@ -1,5 +1,6 @@
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using SideBySide.App.Infrastructure;
 using SideBySide.App.Services;
 using SideBySide.Core.Compare;
 using SideBySide.Core.Localization;
@@ -138,6 +139,7 @@ public sealed partial class CompareViewModel : ObservableObject
 
     public async Task RunAsync(bool clearCache = false, bool keepSelection = false, IReadOnlyCollection<string>? select = null)
     {
+        Diag.Hit("Compare.Run");
         if (_left is null || _right is null) return;
         _cts?.Cancel();
         var cts = _cts = new CancellationTokenSource();
@@ -293,6 +295,7 @@ public sealed partial class CompareViewModel : ObservableObject
 
     private void Publish(IReadOnlyCollection<string>? select)
     {
+        Diag.Hit("Compare.Publish");
         if (_left is null || _right is null) return;
         _comparing = true;
         _vmByRow.Clear();
@@ -386,6 +389,7 @@ public sealed partial class CompareViewModel : ObservableObject
     /// <summary>한쪽 선택을 반대쪽 같은 행에 맞춘다.</summary>
     private void OnSelectionChanged(object? sender, EventArgs e)
     {
+        Diag.Hit("Compare.SelectionSync");
         if (_syncingSelection || !_comparing || sender is not TabViewModel source || _left is null || _right is null) return;
         // 반대쪽 선택을 따라 바뀐 것이면 되돌려 보내지 않는다. 이 검사가 없으면 두 창 목록이 잠시 어긋났을 때
         // (복사 직후 다시 비교하는 동안 등) 두 창이 선택을 끝없이 주고받아 입력을 처리하지 못하고 멈춘다.

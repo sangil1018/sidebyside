@@ -17,26 +17,28 @@ public sealed class FileListView : ListView
     /// </summary>
     protected override void OnKeyDown(KeyEventArgs e)
     {
-        if (IsWindowShortcut(e)) return;
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        if (Window.GetWindow(this) is { } window && IsWindowShortcut(key, Keyboard.Modifiers, window.InputBindings)) return;
         base.OnKeyDown(e);
     }
 
-    private bool IsWindowShortcut(KeyEventArgs e)
+    /// <summary>
+    /// 목록이 처리하지 말고 창으로 넘겨야 하는 키인지: 수식 키가 붙은 이동 키이고, 그 조합이 지금 실행할 수 있는 창 단축키일 때.
+    /// (실제 키보드 상태와 분리해 둔 판별 — 테스트에서 수식 키를 지정해 확인한다.)
+    /// </summary>
+    internal static bool IsWindowShortcut(Key key, ModifierKeys modifiers, InputBindingCollection bindings)
     {
-        var key = e.Key == Key.System ? e.SystemKey : e.Key;
-        var modifiers = Keyboard.Modifiers;
         if (modifiers == ModifierKeys.None) return false;
         if (key is not (Key.Left or Key.Right or Key.Up or Key.Down or Key.Home or Key.End or Key.PageUp or Key.PageDown)) return false;
 
-        var window = Window.GetWindow(this);
-        if (window is null) return false;
-        foreach (var binding in window.InputBindings)
+        foreach (var binding in bindings)
         {
             if (binding is KeyBinding { Gesture: KeyGesture gesture } kb
                 && gesture.Key == key && gesture.Modifiers == modifiers
                 && kb.Command?.CanExecute(kb.CommandParameter) == true)
                 return true;
         }
+
         return false;
     }
 }

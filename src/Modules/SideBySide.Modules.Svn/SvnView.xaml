@@ -91,7 +91,7 @@
                IsBusy="{Binding IsBusy}" Status="{Binding Status}" ScrollContent="False">
     <m:ToolPanel.HeaderTools>
       <StackPanel Orientation="Horizontal">
-        <Button Style="{StaticResource Button.Icon}" Content="{x:Static m:Glyphs.Refresh}" Command="{Binding RefreshAllCommand}"
+        <Button AutomationProperties.AutomationId="Svn.Refresh" Style="{StaticResource Button.Icon}" Content="{x:Static m:Glyphs.Refresh}" Command="{Binding RefreshAllCommand}"
                 ToolTip="{m:T '새로 고침 (서버의 새 변경 확인 포함)'}" />
         <ToggleButton x:Name="OptionsButton" Style="{StaticResource Button.Icon}" Content="{x:Static m:Glyphs.Settings}" ToolTip="{m:T 'SVN 패널 옵션'}" />
         <Popup PlacementTarget="{Binding ElementName=OptionsButton}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
@@ -113,7 +113,7 @@
       </StackPanel>
     </m:ToolPanel.HeaderTools>
     <m:ToolPanel.Footer>
-      <Button Style="{StaticResource Button.Primary}" MinWidth="120" Content="{Binding CommitText}" Command="{Binding CommitCommand}"
+      <Button AutomationProperties.AutomationId="Svn.Commit" Style="{StaticResource Button.Primary}" MinWidth="120" Content="{Binding CommitText}" Command="{Binding CommitCommand}"
               IsEnabled="{Binding CanCommit}" Visibility="{Binding IsChanges, Converter={StaticResource BoolToVis}}" />
     </m:ToolPanel.Footer>
 
@@ -195,7 +195,7 @@
             </Border>
           </Popup>
 
-          <Button Grid.Column="1" Style="{StaticResource Button.Standard}" Command="{Binding SyncCommand}" ToolTip="{Binding SyncTip}">
+          <Button Grid.Column="1" AutomationProperties.AutomationId="Svn.Sync" Style="{StaticResource Button.Standard}" Command="{Binding SyncCommand}" ToolTip="{Binding SyncTip}">
             <StackPanel Orientation="Horizontal">
               <TextBlock Style="{StaticResource Glyph}" Text="{x:Static m:Glyphs.Sync}" FontSize="12" Margin="{StaticResource Icon.Gap}" />
               <TextBlock Text="{Binding SyncText}" />
@@ -231,7 +231,7 @@
 
           <Border Grid.Row="1" Style="{StaticResource Card}">
             <Grid>
-              <ListBox Style="{StaticResource ListBox.Scroll}" ItemsSource="{Binding Changes}" SelectedItem="{Binding SelectedChange}"
+              <ListBox AutomationProperties.AutomationId="Svn.Changes" Style="{StaticResource ListBox.Scroll}" ItemsSource="{Binding Changes}" SelectedItem="{Binding SelectedChange}"
                        ScrollViewer.VerticalScrollBarVisibility="Auto" Margin="2">
                 <ListBox.ItemTemplate>
                   <DataTemplate DataType="{x:Type local:ChangeItem}">

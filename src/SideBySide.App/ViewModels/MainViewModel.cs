@@ -833,6 +833,8 @@ public sealed partial class MainViewModel : ObservableObject
     /// </summary>
     private void RefreshFileManagerRegistration()
     {
+        // 자동화(테스트) 인스턴스는 사용자의 기본 파일 관리자 등록을 자기 exe 경로로 바꾸지 않는다
+        if (AutomationMode.IsOn) return;
         try
         {
             if (_fileManager.IsEnabled && Environment.ProcessPath is { } exe) _fileManager.Enable(exe);
@@ -1007,6 +1009,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void OnPaneStateChanged(PaneViewModel pane)
     {
+        Diag.Hit("Main.PaneStateChanged");
         if (!ReferenceEquals(pane, ActivePane)) return;
         UpdateStatus();
         if (ShowPreview) _ = Preview.ShowAsync(ActiveTab.SelectedItem);

@@ -158,12 +158,12 @@ public sealed partial class ModuleManager(AppSettings settings, ThemeManager the
         if (running.Window is { } window)
         {
             if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
-            window.Activate();
+            AutomationMode.Activate(window);
         }
         else if (running.Panel is { } panel)
         {
             ActivePanelTool = panel;
-            Application.Current.MainWindow?.Activate();
+            AutomationMode.Activate(Application.Current.MainWindow);
         }
     }
 
@@ -401,7 +401,7 @@ public sealed partial class ModuleManager(AppSettings settings, ThemeManager the
         if (running.Window is { } existing)
         {
             if (existing.WindowState == WindowState.Minimized) existing.WindowState = WindowState.Normal;
-            existing.Activate();
+            AutomationMode.Activate(existing);
             return;
         }
 
@@ -417,6 +417,7 @@ public sealed partial class ModuleManager(AppSettings settings, ThemeManager the
             OnUiClosed(running);
         };
         running.Window = window;
+        if (AutomationMode.IsOn) AutomationMode.PlaceOffscreen(window);
         window.Show();
     }
 

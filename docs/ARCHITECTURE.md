@@ -136,6 +136,14 @@ SideBySide.App  (WPF, MVVM)        ──▶  SideBySide.Shell (Win32/COM)  ─�
 - Direct Connect는 AgentZi Direct Connect(Flutter) 앱과 와이어 호환 (`Modules.DirectConnect/Protocol.cs` 머리 주석). 탐색은 58732 수신 소켓(SO_REUSEADDR) + 핑 전용 임시 포트 소켓 2개라 같은 PC의 독립 앱과 공존한다.
 - LAN 공유는 lan_share_setup과 같은 IP·DNS·공유 이름·기본 폴더·설명을 쓴다. 방화벽 그룹은 언어 무관 간접 이름(`@FirewallAPI.dll,-28502`, `-32752`).
 
+## 테스트·자동화 실행
+
+- `Core/AppPaths`: 설정·로그 위치와 실행 모드를 한곳에서 정한다. 환경 변수 `SIDEBYSIDE_DATA_DIR`·`SIDEBYSIDE_AUTOMATION`·`SIDEBYSIDE_DIAG`로 사용자 환경과 분리해 띄운다.
+- `App/Infrastructure/AutomationMode`: 자동화 인스턴스의 창을 화면 밖에 비활성으로 띄우고, 전경을 가져가면 사용자 창으로 돌려준다. 전역 단축키·파일 관리자 재등록·창 위치 저장을 하지 않는다.
+- `App/Infrastructure/Diag`: UI 스레드 지연 감시와 호출 계수(`Diag.Hit`). 꺼져 있으면 bool 검사 한 번이다.
+- `App.ConfigureServices(overrides)`: 테스트가 서비스(대화상자 등)를 바꿔 끼운다. UIA 자동화 ID는 `{cmd:Command}`가 `cmd.<ID>`로 단다.
+- 사용법은 [TESTING.md](TESTING.md).
+
 ## 스레딩
 
 | 작업 | 위치 |

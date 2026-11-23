@@ -67,9 +67,9 @@
           <Border Background="{DynamicResource Brush.Hover}" CornerRadius="5" Padding="2"
                   ToolTip="{cmd:Tip ToggleDualPane}">
             <StackPanel Orientation="Horizontal">
-              <RadioButton Style="{StaticResource Radio.Segment}" Content="{l:T '한 창'}" GroupName="Panes"
+              <RadioButton AutomationProperties.AutomationId="Mode.Single" Style="{StaticResource Radio.Segment}" Content="{l:T '한 창'}" GroupName="Panes"
                            IsChecked="{Binding IsDualPane, Converter={StaticResource InverseBool}}" />
-              <RadioButton Style="{StaticResource Radio.Segment}" Content="{l:T '두 창'}" GroupName="Panes"
+              <RadioButton AutomationProperties.AutomationId="Mode.Dual" Style="{StaticResource Radio.Segment}" Content="{l:T '두 창'}" GroupName="Panes"
                            IsChecked="{Binding IsDualPane}" />
             </StackPanel>
           </Border>
@@ -197,7 +197,7 @@
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
             <!-- 켜진 도구 모듈 (설정 > 모듈). 하나도 없으면 숨김 -->
             <StackPanel Orientation="Horizontal" Visibility="{Binding Tools.HasEnabledModules, Converter={StaticResource BoolToVis}}">
-              <Button x:Name="ToolsButton" Style="{StaticResource Button.Ghost}" Click="OnToolsMenu" ToolTip="{l:T '도구 모듈'}">
+              <Button x:Name="ToolsButton" AutomationProperties.AutomationId="ToolsMenu" Style="{StaticResource Button.Ghost}" Click="OnToolsMenu" ToolTip="{l:T '도구 모듈'}">
                 <StackPanel Orientation="Horizontal">
                   <TextBlock Style="{StaticResource Glyph}" Text="{StaticResource Icon.Tools}" Margin="0,0,6,0" />
                   <TextBlock Text="{l:T '도구'}" />
@@ -256,9 +256,9 @@
         <views:NavigationSidebar Grid.Column="0" DataContext="{Binding}" />
         <GridSplitter x:Name="SidebarSplitter" Grid.Column="1" Style="{StaticResource Splitter}" />
 
-        <views:FilePane x:Name="LeftPane" Grid.Column="2" DataContext="{Binding Left}" />
+        <views:FilePane x:Name="LeftPane" AutomationProperties.AutomationId="LeftPane" Grid.Column="2" DataContext="{Binding Left}" />
         <GridSplitter x:Name="PaneSplitter" Grid.Column="3" Style="{StaticResource Splitter}" />
-        <views:FilePane x:Name="RightPane" Grid.Column="4" DataContext="{Binding Right}" />
+        <views:FilePane x:Name="RightPane" AutomationProperties.AutomationId="RightPane" Grid.Column="4" DataContext="{Binding Right}" />
 
         <GridSplitter x:Name="PreviewSplitter" Grid.Column="5" Style="{StaticResource Splitter}" />
         <views:PreviewPane x:Name="PreviewPane" Grid.Column="6" DataContext="{Binding Preview}" />

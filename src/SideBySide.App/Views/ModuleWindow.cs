@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using SideBySide.App.Infrastructure;
 using SideBySide.App.Services;
 using SideBySide.Core.Settings;
 
@@ -91,7 +92,7 @@ public sealed class ModuleWindow : Window
         Content = null; // 모듈 화면을 다른 곳(패널)에 다시 붙일 수 있게
         base.OnClosed(e);
         if (!_silent) ClosedByUser?.Invoke(this, EventArgs.Empty);
-        Owner?.Activate();
+        AutomationMode.Activate(Owner);
     }
 
     private static bool IsOnScreen(WindowPlacement p)

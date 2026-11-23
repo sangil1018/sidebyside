@@ -243,13 +243,17 @@ public partial class FilePane : UserControl
     // ── 선택 ────────────────────────────────────────────────────────
 
     private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
-        => _tab?.SetSelection(List.SelectedItems.Cast<FileItemViewModel>().ToList());
+    {
+        Diag.Hit("Pane.SelectionChanged");
+        _tab?.SetSelection(List.SelectedItems.Cast<FileItemViewModel>().ToList());
+    }
 
     private void OnSelectRequested(object? sender, SelectRequest request)
         => Dispatcher.BeginInvoke(() => ApplySelection(request), DispatcherPriority.Loaded);
 
     private void ApplySelection(SelectRequest request)
     {
+        Diag.Hit("Pane.ApplySelection");
         if (_tab is null) return;
         var items = _tab.Items;
         List<FileItemViewModel> targets;

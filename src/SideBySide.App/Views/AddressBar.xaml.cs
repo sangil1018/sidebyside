@@ -1,6 +1,9 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Automation;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Input;
 using SideBySide.App.ViewModels;
 using SideBySide.Core.Localization;
@@ -105,4 +108,31 @@ public partial class AddressBar : UserControl
     }
 
     public sealed record Crumb(string Name, string Path, bool ShowSeparator);
+
+    /// <summary>
+    /// UI 자동화용: 주소 표시줄을 값(경로) 하나짜리 컨트롤로 보여 준다. 드라이버가 포커스·키 입력 없이
+    /// <c>ValuePattern.SetValue(경로)</c>로 이동할 수 있다 (사용자가 Enter로 이동하는 것과 같은 경로).
+    /// </summary>
+    protected override AutomationPeer OnCreateAutomationPeer() => new AddressBarAutomationPeer(this);
+
+    private sealed class AddressBarAutomationPeer(AddressBar owner) : UserControlAutomationPeer(owner), IValueProvider
+    {
+        public string Value => owner._tab?.Path ?? string.Empty;
+
+        public bool IsReadOnly => owner._tab is null;
+
+        public void SetValue(string value)
+        {
+            if (owner._tab is not { } tab) throw new ElementNotEnabledException();
+            owner.EndEdit();
+            _ = tab.NavigateAsync(value);
+        }
+
+        public override object? GetPattern(PatternInterface patternInterface)
+            => patternInterface == PatternInterface.Value ? this : base.GetPattern(patternInterface);
+
+        protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Edit;
+
+        protected override string GetClassNameCore() => nameof(AddressBar);
+    }
 }

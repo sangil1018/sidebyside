@@ -26,8 +26,8 @@ public sealed class JsonSettingsStore(string path) : ISettingsStore
 
     public string FilePath { get; } = path;
 
-    public static string DefaultPath =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SideBySide", "settings.json");
+    /// <summary>평소 %APPDATA%\SideBySide\settings.json. <see cref="AppPaths.DataDirVariable"/>로 분리할 수 있다.</summary>
+    public static string DefaultPath => AppPaths.SettingsFile;
 
     public AppSettings Load()
     {
