@@ -387,6 +387,9 @@ public sealed partial class CompareViewModel : ObservableObject
     private void OnSelectionChanged(object? sender, EventArgs e)
     {
         if (_syncingSelection || !_comparing || sender is not TabViewModel source || _left is null || _right is null) return;
+        // 반대쪽 선택을 따라 바뀐 것이면 되돌려 보내지 않는다. 이 검사가 없으면 두 창 목록이 잠시 어긋났을 때
+        // (복사 직후 다시 비교하는 동안 등) 두 창이 선택을 끝없이 주고받아 입력을 처리하지 못하고 멈춘다.
+        if (source.IsApplyingSyncedSelection) return;
         var other = ReferenceEquals(source, _left) ? _right : _left;
         List<int> indices;
         if (source.SelectedItems.Count > 32)

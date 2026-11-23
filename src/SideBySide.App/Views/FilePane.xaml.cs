@@ -265,8 +265,19 @@ public partial class FilePane : UserControl
         }
 
         var hadFocus = List.IsKeyboardFocusWithin;
-        if (targets.Count == items.Count && items.Count > 0) List.SelectAll();
-        else List.SelectItems(targets);
+        // 반대쪽 창 선택을 따라가는 요청이면, 그 결과를 다시 반대쪽으로 보내지 않는다 (비교 모드 선택 핑퐁 방지)
+        var synced = request.Indices is not null;
+        if (synced) _tab.IsApplyingSyncedSelection = true;
+        try
+        {
+            if (targets.Count == items.Count && items.Count > 0) List.SelectAll();
+            else List.SelectItems(targets);
+        }
+        finally
+        {
+            if (synced) _tab.IsApplyingSyncedSelection = false;
+        }
+
         if (targets.Count == 0) return;
 
         List.ScrollIntoView(targets[0]);
