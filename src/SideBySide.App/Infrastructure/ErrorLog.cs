@@ -1,12 +1,11 @@
 namespace SideBySide.App.Infrastructure;
 
-/// <summary>예기치 않은 오류를 %LOCALAPPDATA%\SideBySide\error.log에 남긴다 (문제 보고·유지보수용).</summary>
+/// <summary>예기치 않은 오류를 %LOCALAPPDATA%\SideBySide\error.log에 남긴다 (문제 보고·유지보수용). 위치는 <see cref="Core.AppPaths.ErrorLog"/>.</summary>
 public static class ErrorLog
 {
     private const long MaxBytes = 512 * 1024;
 
-    public static string FilePath { get; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SideBySide", "error.log");
+    public static string FilePath { get; } = Core.AppPaths.ErrorLog;
 
     public static void Write(Exception ex)
     {

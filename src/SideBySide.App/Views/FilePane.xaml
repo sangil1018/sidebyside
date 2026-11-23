@@ -20,6 +20,7 @@
     </ItemsPanelTemplate>
 
     <Style x:Key="ListViewItem.Tile" TargetType="ListViewItem">
+      <Setter Property="AutomationProperties.Name" Value="{Binding Name}" />
       <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
       <Setter Property="FocusVisualStyle" Value="{x:Null}" />
       <Setter Property="Margin" Value="2" />
@@ -202,7 +203,7 @@
                 IsEnabled="{Binding ActiveTab.CanGoUp}" />
         <Button Style="{StaticResource Button.Icon}" Content="&#xE72C;" Click="OnRefresh" ToolTip="{l:T '새로 고침 (F5)'}" />
       </StackPanel>
-      <views:AddressBar x:Name="Address" Grid.Column="1" Margin="4,0,6,0" DataContext="{Binding ActiveTab}" />
+      <views:AddressBar x:Name="Address" AutomationProperties.AutomationId="Address" Grid.Column="1" Margin="4,0,6,0" DataContext="{Binding ActiveTab}" />
       <Grid Grid.Column="2" Width="210">
         <TextBox x:Name="SearchBox" Padding="26,4,30,4"
                  Text="{Binding ActiveTab.SearchText, UpdateSourceTrigger=PropertyChanged, Delay=150}"
@@ -221,7 +222,7 @@
 
     <!-- ── 파일 목록 ───────────────────────────────────────────── -->
     <Grid Grid.Row="2">
-      <views:FileListView x:Name="List" Style="{StaticResource ListView.Files}"
+      <views:FileListView x:Name="List" AutomationProperties.AutomationId="FileList" Style="{StaticResource ListView.Files}"
                           ItemsSource="{Binding ActiveTab.Items}"
                           TextSearch.TextPath="Name"
                           AllowDrop="True"

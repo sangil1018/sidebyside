@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    UI 자동화 드라이버: 실제 SideBySide.exe를 사용자 설정과 분리된 임시 폴더로 띄워(화면 밖·포커스 없음)
+    UI Automation 패턴으로만 조작·검사한다. 마우스·키보드를 쓰지 않아 사용자가 PC를 쓰는 중에도 실행할 수 있다.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>SideBySide.UiDriver</RootNamespace>
+    <AssemblyName>SideBySide.UiDriver</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+</Project>

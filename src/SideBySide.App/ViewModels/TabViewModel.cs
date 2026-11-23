@@ -312,6 +312,7 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
 
     public Task RefreshAsync()
     {
+        Diag.Hit("Tab.Refresh");
         if (IsCompareView)
         {
             ExternalChange?.Invoke(this, EventArgs.Empty);
@@ -372,6 +373,7 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
     /// <summary>비교 모드: 비교 엔진이 만든 정렬된 행을 그대로 표시.</summary>
     public void ShowRows(IReadOnlyList<FileItemViewModel> rows, IReadOnlyCollection<string>? select = null)
     {
+        Diag.Hit("Tab.ShowRows");
         _loadCts?.Cancel();
         HasLoaded = true;
         IsLoading = false;

@@ -172,6 +172,8 @@ public static class CommandRegistry
 
     public static CommandDefinition Get(string id) => _primary[id];
 
+    public static bool TryGet(string id, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out CommandDefinition? definition) => _primary.TryGetValue(id, out definition);
+
     public static CommandDefinition DefaultOf(string id) => Defaults.First(d => d.Id == id && !d.IsAlternate);
 
     /// <summary>

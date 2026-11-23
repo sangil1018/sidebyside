@@ -73,6 +73,7 @@ public partial class App : Application
         var window = _services.GetRequiredService<MainWindow>();
         MainWindow = window;
         window.Show();
+        Diag.Start(Dispatcher);
         _ = window.ViewModel.InitializeAsync(e.Args);
     }
 
@@ -96,7 +97,8 @@ public partial class App : Application
         base.OnExit(e);
     }
 
-    private static ServiceProvider ConfigureServices()
+    /// <param name="overrides">테스트 하네스가 서비스를 바꿔 끼운다 (예: 모달 대화상자 대신 정해 둔 답을 하는 가짜). 마지막 등록이 이긴다.</param>
+    internal static ServiceProvider ConfigureServices(Action<IServiceCollection>? overrides = null)
     {
         var services = new ServiceCollection();
 
@@ -125,6 +127,7 @@ public partial class App : Application
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
 
+        overrides?.Invoke(services);
         return services.BuildServiceProvider();
     }
 

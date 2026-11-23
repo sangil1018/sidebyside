@@ -52,7 +52,8 @@ public partial class MainWindow : Window
         RightPane.Main = viewModel;
         DiffView.Commands = commands;
 
-        RestorePlacement();
+        if (AutomationMode.IsOn) AutomationMode.PlaceOffscreen(this);
+        else RestorePlacement();
         UpdateColumns();
 
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
@@ -187,6 +188,7 @@ public partial class MainWindow : Window
     /// <summary>앱 전역 단축키로 창을 앞으로 가져온다 (앱이 실행 중일 때만 동작).</summary>
     private void RegisterOpenShortcut()
     {
+        if (AutomationMode.IsOn) return; // 자동화 인스턴스는 사용자의 전역 단축키를 빼앗지 않는다
         var hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd == IntPtr.Zero) return;
 
@@ -261,6 +263,7 @@ public partial class MainWindow : Window
 
     private void SavePlacement()
     {
+        if (AutomationMode.IsOn) return; // 화면 밖 위치를 기억하지 않는다
         var bounds = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
         _settings.Window = new WindowPlacement
         {
@@ -321,14 +324,16 @@ public partial class MainWindow : Window
         foreach (var module in ViewModel.Tools.EnabledModules)
         {
             var def = CommandRegistry.Get(module.CommandId);
-            menu.Items.Add(new MenuItem
+            var item = new MenuItem
             {
                 Header = module.Title,
                 InputGestureText = def.Gesture,
                 Command = ViewModel.Commands[module.CommandId],
                 Icon = new TextBlock { Text = module.Glyph, Style = (Style)FindResource("Glyph") },
                 ToolTip = module.Description,
-            });
+            };
+            System.Windows.Automation.AutomationProperties.SetAutomationId(item, "Tool." + module.Id); // UI 자동화 드라이버용
+            menu.Items.Add(item);
         }
 
         menu.Items.Add(new Separator());

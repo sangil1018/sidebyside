@@ -42,6 +42,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="SideBySide.Modules.Tests" />
+    <InternalsVisibleTo Include="SideBySide.Scenarios.Tests" />
   </ItemGroup>
 
 </Project>

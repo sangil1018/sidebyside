@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- 시나리오 테스트: 앱 전체를 테스트 프로세스 안에서 화면 밖에 띄워 명령으로 조작·검사 (사용자 설정과 분리, 마우스·키보드 사용 안 함) -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SideBySide.App\SideBySide.App.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SideBySide.Modules.Resize\SideBySide.Modules.Resize.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SideBySide.Modules.SeqViewer\SideBySide.Modules.SeqViewer.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SideBySide.Modules.TempCleaner\SideBySide.Modules.TempCleaner.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SideBySide.Modules.LanShare\SideBySide.Modules.LanShare.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SideBySide.Modules.DirectConnect\SideBySide.Modules.DirectConnect.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SideBySide.Modules.Git\SideBySide.Modules.Git.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SideBySide.Modules.Svn\SideBySide.Modules.Svn.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
@@ -82,12 +81,14 @@ public class UiSmokeTests
 
     private static void Run()
     {
+        // 사용자의 실제 설정 파일을 읽지 않도록 빈 임시 데이터 폴더를 쓴다
+        Environment.SetEnvironmentVariable(Core.AppPaths.DataDirVariable,
+            Path.Combine(Path.GetTempPath(), "sidebyside-smoke-" + Guid.NewGuid().ToString("N")));
+
         var app = new SideBySide.App.App();
         app.InitializeComponent();
 
-        var services = (ServiceProvider)typeof(SideBySide.App.App)
-            .GetMethod("ConfigureServices", BindingFlags.NonPublic | BindingFlags.Static)!
-            .Invoke(null, null)!;
+        var services = SideBySide.App.App.ConfigureServices();
         try
         {
             var theme = services.GetRequiredService<ThemeManager>();
