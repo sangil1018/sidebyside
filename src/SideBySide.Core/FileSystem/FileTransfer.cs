@@ -89,6 +89,7 @@ public sealed class FileTransfer
     private readonly Stopwatch _watch = Stopwatch.StartNew();
     private readonly List<TransferError> _errors = [];
     private readonly List<TransferredItem> _items = [];
+    private readonly List<(string Source, string Target)> _createdDirOrder = [];
 
     private long _bytesTotal;
     private long _bytesDone;
@@ -116,6 +117,119 @@ public sealed class FileTransfer
         IProgress<TransferProgress>? progress = null,
         CancellationToken ct = default)
         => new FileTransfer(kind, destinationDirectory, resolveConflict, progress, ct).RunAsync(sources);
+
+    /// <summary>
+    /// 정해 둔 원본 파일 → 대상 파일 경로 목록을 복사한다 (비교 모드에서 다른 파일만 복사할 때).
+    /// <paramref name="directories"/>는 새로 만들 폴더(상위가 먼저). 대상 파일이 있으면 <paramref name="resolveConflict"/>로 묻는다.
+    /// 결과의 <see cref="TransferResult.Items"/>에는 대상에 새로 생긴 최상위 항목(폴더 또는 파일)과 덮어쓴 파일이 담긴다.
+    /// </summary>
+    public static Task<TransferResult> CopyFilesAsync(
+        IReadOnlyList<(string Source, string Target)> files,
+        IReadOnlyList<(string Source, string Target)> directories,
+        string destinationDirectory,
+        Func<TransferConflict, Task<ConflictChoice>> resolveConflict,
+        IProgress<TransferProgress>? progress = null,
+        CancellationToken ct = default)
+        => new FileTransfer(TransferKind.Copy, destinationDirectory, resolveConflict, progress, ct).CopyFilesAsync(files, directories);
+
+    private async Task<TransferResult> CopyFilesAsync(
+        IReadOnlyList<(string Source, string Target)> files, IReadOnlyList<(string Source, string Target)> directories)
+    {
+        var cancelled = false;
+        // 이번 작업에서 새로 만든 폴더: 그 안의 파일은 폴더 항목 하나로 묶어 기록한다 (실행 취소 시 폴더째 지움)
+        var createdDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            if (!Directory.Exists(_destination)) throw new DirectoryNotFoundException(L.F("대상 폴더가 없습니다: {0}", _destination));
+            foreach (var (source, _) in files) Scan(Path.GetFullPath(source));
+            Report(force: true);
+
+            foreach (var (source, target) in directories)
+            {
+                _ct.ThrowIfCancellationRequested();
+                EnsureDirectory(Path.GetFullPath(target), Path.GetFullPath(source), createdDirs);
+            }
+
+            foreach (var (rawSource, rawTarget) in files)
+            {
+                _ct.ThrowIfCancellationRequested();
+                var source = Path.GetFullPath(rawSource);
+                var target = Path.GetFullPath(rawTarget);
+                if (!File.Exists(source))
+                {
+                    _errors.Add(new TransferError(source, L.T("원본을 찾을 수 없습니다.")));
+                    continue;
+                }
+
+                var parent = Path.GetDirectoryName(target)!;
+                try
+                {
+                    EnsureDirectory(parent, Path.GetDirectoryName(source)!, createdDirs);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    _errors.Add(new TransferError(source, ex.Message));
+                    continue;
+                }
+
+                var existedBefore = File.Exists(target) || Directory.Exists(target);
+                var final = await TransferFileAsync(source, target).ConfigureAwait(false);
+                if (final is null || createdDirs.Contains(parent)) continue;
+                _items.Add(new TransferredItem(source, final, !existedBefore || !string.Equals(final, target, StringComparison.OrdinalIgnoreCase)));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            cancelled = true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _errors.Add(new TransferError(_destination, ex.Message));
+        }
+
+        ApplyCreatedDirectoryTimes();
+        Report(force: true);
+        return new TransferResult(_items, _filesDone, _skipped, _errors, cancelled);
+    }
+
+    /// <summary>
+    /// 대상 폴더를 (상위까지) 만든다. 새로 만든 폴더 중 상위가 이미 있던 가장 바깥 폴더만 결과 항목으로 기록하고,
+    /// 원본 폴더의 시각을 맞춘다.
+    /// </summary>
+    private void EnsureDirectory(string target, string source, HashSet<string> createdDirs)
+    {
+        target = Path.TrimEndingDirectorySeparator(target);
+        source = Path.TrimEndingDirectorySeparator(source);
+        if (Directory.Exists(target)) return;
+
+        var parent = Path.GetDirectoryName(target);
+        var sourceParent = Path.GetDirectoryName(source);
+        if (parent is not null && sourceParent is not null && !Directory.Exists(parent)) EnsureDirectory(parent, sourceParent, createdDirs);
+
+        Directory.CreateDirectory(target);
+        createdDirs.Add(target);
+        _createdDirOrder.Add((source, target));
+        if (parent is null || !createdDirs.Contains(parent)) _items.Add(new TransferredItem(source, target, CreatedNew: true));
+    }
+
+    /// <summary>새로 만든 폴더의 시각을 원본에 맞춘다. 안에 파일을 넣으면 수정 시각이 바뀌므로 마지막에, 하위부터.</summary>
+    private void ApplyCreatedDirectoryTimes()
+    {
+        for (var i = _createdDirOrder.Count - 1; i >= 0; i--)
+        {
+            var (source, target) = _createdDirOrder[i];
+            try
+            {
+                if (!Directory.Exists(source) || !Directory.Exists(target)) continue;
+                var info = new DirectoryInfo(source);
+                Directory.SetCreationTimeUtc(target, info.CreationTimeUtc);
+                Directory.SetLastWriteTimeUtc(target, info.LastWriteTimeUtc);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+            }
+        }
+    }
 
     private async Task<TransferResult> RunAsync(IReadOnlyList<string> sources)
     {

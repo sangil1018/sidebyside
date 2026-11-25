@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows.Threading;
 using SideBySide.App.ViewModels;
+using SideBySide.Core.Compare;
 using SideBySide.Core.FileSystem;
 using SideBySide.Core.Localization;
 
@@ -19,7 +20,31 @@ public sealed class FileTransferService(IDialogService dialogs)
 
     public bool IsBusy => Operations.Any(o => !o.IsDone);
 
-    public async Task<TransferResult> TransferAsync(TransferKind kind, IReadOnlyList<string> sources, string destination)
+    public Task<TransferResult> TransferAsync(TransferKind kind, IReadOnlyList<string> sources, string destination)
+        => RunAsync(kind, destination, autoOverwrite: null,
+            (resolve, progress, ct) => FileTransfer.RunAsync(kind, sources, destination, resolve, progress, ct));
+
+    /// <summary>
+    /// 비교 복사: 정해 둔 파일만 같은 상대 경로로 복사한다.
+    /// 비교에서 원본이 더 최신이라 고른 덮어쓰기(<see cref="CompareCopyFile.Overwrites"/>)는 묻지 않고 덮어쓰고,
+    /// 그 밖의 충돌(복사 사이에 대상이 생겼거나 종류가 다른 경우)만 대화상자로 묻는다.
+    /// </summary>
+    public Task<TransferResult> CopyCompareAsync(CompareCopyPlan plan, string destination)
+    {
+        var overwrites = plan.Files.Where(f => f.Overwrites)
+            .Select(f => Path.GetFullPath(f.Target))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var files = plan.Files.Select(f => (f.Source, f.Target)).ToList();
+        return RunAsync(TransferKind.Copy, destination,
+            conflict => conflict.CanOverwrite
+                        && overwrites.Contains(Path.GetFullPath(conflict.DestinationPath))
+                        && conflict.SourceModifiedUtc > conflict.DestinationModifiedUtc,
+            (resolve, progress, ct) => FileTransfer.CopyFilesAsync(files, plan.Directories, destination, resolve, progress, ct));
+    }
+
+    private async Task<TransferResult> RunAsync(
+        TransferKind kind, string destination, Func<TransferConflict, bool>? autoOverwrite,
+        Func<Func<TransferConflict, Task<ConflictChoice>>, IProgress<TransferProgress>, CancellationToken, Task<TransferResult>> run)
     {
         using var cts = new CancellationTokenSource();
         var title = kind == TransferKind.Copy ? L.T("복사") : L.T("이동");
@@ -30,6 +55,7 @@ public sealed class FileTransferService(IDialogService dialogs)
         ConflictChoice? applyToAll = null;
         async Task<ConflictChoice> ResolveAsync(TransferConflict conflict)
         {
+            if (autoOverwrite?.Invoke(conflict) == true) return ConflictChoice.Overwrite;
             if (applyToAll is { } remembered) return conflict.CanOverwrite || remembered != ConflictChoice.Overwrite ? remembered : ConflictChoice.KeepBoth;
             var (choice, all) = await _dispatcher.InvokeAsync(() => dialogs.ResolveConflict(conflict));
             if (all) applyToAll = choice;
@@ -40,7 +66,7 @@ public sealed class FileTransferService(IDialogService dialogs)
         TransferResult result;
         try
         {
-            result = await Task.Run(() => FileTransfer.RunAsync(kind, sources, destination, ResolveAsync, progress, cts.Token));
+            result = await Task.Run(() => run(ResolveAsync, progress, cts.Token));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
