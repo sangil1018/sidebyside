@@ -7,6 +7,7 @@ using SideBySide.App.Commands;
 using SideBySide.App.Infrastructure;
 using SideBySide.App.Modules;
 using SideBySide.App.Services;
+using SideBySide.Core.Compare;
 using SideBySide.Core.Diff;
 using SideBySide.Core.Filtering;
 using SideBySide.Core.FileSystem;
@@ -756,7 +757,11 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (paths.Any(p => PathNames.IsSameOrChildOf(destination, p))) return; // 자기 자신/하위로 금지
         if (IsCompareMode && !Directory.Exists(destination)) Directory.CreateDirectory(destination);
-        if (!await TransferAsync(paths, destination, move)) return;
+        if (IsCompareMode && !move)
+        {
+            if (!await CopyCompareAsync(paths, destination)) return;
+        }
+        else if (!await TransferAsync(paths, destination, move)) return;
 
         await RefreshAfterChangeAsync(to.ActiveTab, []);
         if (move && !IsCompareMode) await RefreshAfterChangeAsync(from.ActiveTab, []);
@@ -1089,6 +1094,45 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task<bool> TransferAsync(IReadOnlyList<string> sources, string destination, bool move)
     {
         var result = await _transfers.TransferAsync(move ? TransferKind.Move : TransferKind.Copy, sources, destination);
+        return RecordUndo(result, destination, move);
+    }
+
+    /// <summary>
+    /// 비교 모드 복사: 선택 항목 중 반대쪽과 다르고 이쪽이 더 최신인 파일, 반대쪽에 없는 파일·폴더만
+    /// 같은 상대 경로로 복사한다 (선택한 폴더는 하위를 비교 기준으로 다시 훑는다).
+    /// </summary>
+    private async Task<bool> CopyCompareAsync(IReadOnlyList<string> sources, string destination)
+    {
+        CompareCopyPlan plan;
+        try
+        {
+            plan = await CompareCopyPlanner.BuildAsync(sources, destination, _ctx.Filter, Compare.Options);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _ctx.Dialogs.ShowError(ex.Message);
+            return false;
+        }
+
+        if (plan.IsEmpty)
+        {
+            ShowNotice(plan.NotNewer > 0
+                ? L.F("복사할 파일이 없습니다. 다른 파일 {0}개는 반대쪽이 더 최신이거나 수정 시각이 같아 건너뜁니다.", plan.NotNewer)
+                : L.T("복사할 파일이 없습니다. 선택한 항목이 반대쪽과 같습니다."));
+            return false;
+        }
+
+        var result = await _transfers.CopyCompareAsync(plan, destination);
+        if (!result.Cancelled && plan.NotNewer > 0)
+            ShowNotice(L.F("반대쪽이 더 최신이거나 수정 시각이 같은 다른 파일 {0}개는 건너뛰었습니다.", plan.NotNewer));
+        return RecordUndo(result, destination, move: false);
+    }
+
+    /// <summary>
+    /// 실행 취소를 기록한다. 대상에 새로 생긴 최상위 항목만 되돌린다 (병합되거나 덮어쓴 기존 항목은 원래 내용을 복구할 수 없으므로 제외).
+    /// </summary>
+    private bool RecordUndo(TransferResult result, string destination, bool move)
+    {
         var created = result.Items.Where(i => i.CreatedNew).ToList();
         if (created.Count > 0)
         {
